@@ -1,0 +1,52 @@
+{
+    "eu-west-2": {
+        "continentM49": 150,
+        "regionM49": 155,
+        "countryA2": "FR",
+        "countryM49": 250,
+        "placement": "central",
+        "subRegion": "Pantin",
+        "latitude": 48.8188484,
+        "longitude": 2.1583486
+    },
+    "us-east-2": {
+        "continentM49": 19,
+        "regionM49": 21,
+        "countryA2": "US",
+        "countryM49": 840,
+        "placement": "east",
+        "subRegion": "Secaucus",
+        "latitude": 40.7899291,
+        "longitude": -74.0566735
+    },
+    "us-west-1": {
+        "continentM49": 19,
+        "regionM49": 21,
+        "countryA2": "US",
+        "countryM49": 840,
+        "placement": "west",
+        "subRegion": "San Jose",
+        "latitude": 37.3361905,
+        "longitude": -121.8905833
+    },
+    "cn-southeast-1": {
+        "continentM49": 142,
+        "regionM49": 143,
+        "countryM49": 156,
+        "countryA2": "CN",
+        "placement": "south-east",
+        "subRegion": "Sha Tin",
+        "latitude": 22.3810557,
+        "longitude": 114.1888792
+    },
+    "cloudgouv-eu-west-1": {
+        "continentM49": 150,
+        "regionM49": 155,
+        "countryM49": 250,
+        "countryA2": "FR",
+        "placement": "central",
+        "subRegion": "Pantin",
+        "latitude": 48.8188484,
+        "longitude": 2.1583486
+    }
+}

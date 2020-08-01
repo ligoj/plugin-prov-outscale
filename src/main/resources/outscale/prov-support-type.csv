@@ -1,0 +1,3 @@
+node.id;name;code;slaStartTime;slaEndTime;slaWeekEnd;commitment;accessApi;accessEmail;accessChat;accessPhone;seats;slaGeneralGuidance;slaSystemImpaired;slaProductionSystemImpaired;slaProductionSystemDown;slaBusinessCriticalSystemDown;level;description
+service:prov:outscale;Basic;outscale-basic;0;86400000;TRUE;1;;ALL;ALL;ALL;;;;;;;LOW;
+service:prov:outscale;Service de contrat Excellence;outscale-excellence;0;86400000;TRUE;1;;ALL;ALL;ALL;;;;;;;BEST;https://fr.outscale.com/professional-services-services/

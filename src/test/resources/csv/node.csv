@@ -1,0 +1,4 @@
+id;name;refined.id;mode;uiClasses;tag;tagUiClasses
+service:prov;Provisioning;;LINK;fas fa-server;technical;fa fa-industry
+service:prov:outscale;Provisioning Outscale;service:prov;LINK;;;
+service:prov:outscale:test;Provisioning Outscale AccountA;service:prov:outscale;LINK;;;
