@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -20,9 +19,7 @@ import org.apache.commons.lang3.EnumUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.ligoj.app.plugin.prov.catalog.AbstractImportCatalogResource;
 import org.ligoj.app.plugin.prov.catalog.AbstractUpdateContext;
-import org.ligoj.app.plugin.prov.outscale.ProvOutscalePluginResource;
 import org.ligoj.app.plugin.prov.model.ImportCatalogStatus;
-import org.ligoj.app.plugin.prov.model.ProvDatabasePrice;
 import org.ligoj.app.plugin.prov.model.ProvDatabaseType;
 import org.ligoj.app.plugin.prov.model.ProvInstancePrice;
 import org.ligoj.app.plugin.prov.model.ProvInstancePriceTerm;
@@ -36,15 +33,13 @@ import org.ligoj.app.plugin.prov.model.ProvSupportType;
 import org.ligoj.app.plugin.prov.model.ProvTenancy;
 import org.ligoj.app.plugin.prov.model.Rate;
 import org.ligoj.app.plugin.prov.model.VmOs;
+import org.ligoj.app.plugin.prov.outscale.ProvOutscalePluginResource;
 import org.ligoj.bootstrap.core.INamableBean;
 import org.ligoj.bootstrap.core.curl.CurlProcessor;
-import org.ligoj.bootstrap.core.resource.BusinessException;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
-import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.Setter;
 
@@ -87,25 +82,10 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 	public static final String CONF_ITYPE = ProvOutscalePluginResource.KEY + ":instance-type";
 
 	/**
-	 * Configuration key used for enabled database type pattern names. When value is <code>null</code>, no restriction.
-	 */
-	public static final String CONF_DTYPE = ProvOutscalePluginResource.KEY + ":database-type";
-	/**
-	 * Configuration key used for enabled database engine pattern names. When value is <code>null</code>, no
-	 * restriction.
-	 */
-	public static final String CONF_ENGINE = ProvOutscalePluginResource.KEY + ":database-engine";
-
-	/**
 	 * Configuration key used for enabled OS pattern names. When value is <code>null</code>, no restriction.
 	 */
 	public static final String CONF_OS = ProvOutscalePluginResource.KEY + ":os";
 
-	/**
-	 * Price Multiplier as default for stand-alone server. This value is different for read-only node (not yet
-	 * supported)
-	 */
-	private static final double PRICE_MULTIPLIER = 3d;
 
 	private String getPricesApi() {
 		return configuration.get(CONF_API_PRICES, DEFAULT_API_PRICES);
@@ -129,8 +109,6 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 		// Get previous data
 		nextStep(node, "initialize");
 		context.setValidOs(Pattern.compile(configuration.get(CONF_OS, ".*"), Pattern.CASE_INSENSITIVE));
-		context.setValidDatabaseType(Pattern.compile(configuration.get(CONF_DTYPE, ".*"), Pattern.CASE_INSENSITIVE));
-		context.setValidDatabaseEngine(Pattern.compile(configuration.get(CONF_ENGINE, ".*"), Pattern.CASE_INSENSITIVE));
 		context.setValidInstanceType(Pattern.compile(configuration.get(CONF_ITYPE, ".*"), Pattern.CASE_INSENSITIVE));
 		context.setValidRegion(Pattern.compile(configuration.get(CONF_REGIONS, ".*")));
 		context.getMapRegionToName().putAll(toMap("digitalocean/regions.json", MAP_LOCATION));
@@ -196,63 +174,6 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 							installInstancePrice(context, hourlyTerm, getOs(d.getName()), s.getType(),
 									s.getPricePerHour() * context.getHoursMonth(), r);
 						}));
-			});
-		}
-
-		// Database
-		nextStep(node, "install-database");
-		context.setPreviousDatabase(dpRepository.findAllBy("term.node", node).stream()
-				.collect(Collectors.toMap(ProvDatabasePrice::getCode, Function.identity())));
-		try (var curl = new CurlProcessor()) {
-			final var mapper = new ObjectMapper();
-
-			mapper.configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
-			final var rawJS = StringUtils.defaultString(curl.get(getPricesApi() + "/aurora.js"), "");
-			final var engineMatcher = Pattern.compile("e.DBAAS_DBS=(\\[[^=]*\\])", Pattern.MULTILINE).matcher(rawJS);
-			// Engine
-			if (!engineMatcher.find()) {
-				// Prices format has changed too much, unable to parse data
-				throw new BusinessException("DigitalOcean prices API cannot be parsed, engines not found");
-			}
-			final var dbaasDbs = mapper.readValue(StringUtils.replace(
-					StringUtils.replace(StringUtils.replace(engineMatcher.group(1), "!0", "true"), "!1", "false")
-							.replaceAll("![^,}]+", "\"\""),
-					"!", ""), new TypeReference<List<NamedBean>>() {
-					});
-			// Instance price
-			final var iMatcher = Pattern.compile("e.DBAAS_SIZES=(\\[[^=]*\\])", Pattern.MULTILINE).matcher(rawJS);
-			if (!iMatcher.find()) {
-				// Prices format has changed too much, unable to parse data
-				throw new BusinessException("DigitalOcean prices API cannot be parsed, sizes not found");
-			}
-			final var dbaasSizes = mapper.readValue(StringUtils.replace(iMatcher.group(1), "*l", ""),
-					new TypeReference<List<DatabasePrice>>() {
-					});
-
-			// For each price/region/engine
-			// Install term, type and price
-			dbaasDbs.stream().map(NamedBean::getName).filter(e -> isEnabledEngine(context, e)).forEach(engine -> {
-				dbaasSizes.stream().forEach(s -> {
-					final var codeType = String.format("db-%d-%d", s.getCpu(), s.getMemory());
-					if (isEnabledDatabase(context, codeType)) {
-						var type = installDatabaseType(context, codeType, s);
-						context.getRegions().keySet().stream().filter(r -> isEnabledRegionDatabase(context, r))
-								.forEach(region -> {
-									// Install monthly based price
-									var partialCode = codeType + "/" + engine;
-									installDatabasePrice(context, monthlyTerm,
-											monthlyTerm.getCode() + "/" + partialCode, type,
-											s.getMonthlyPrice() * PRICE_MULTIPLIER, engine, null, false, region);
-
-									// Install hourly based price
-									installDatabasePrice(context, hourlyTerm, hourlyTerm.getCode() + "-" + partialCode,
-											type,
-											s.getMonthlyPrice() * PRICE_MULTIPLIER / 672d * context.getHoursMonth(),
-											engine, null, false, region);
-
-								});
-					}
-				});
 			});
 		}
 
@@ -481,60 +402,6 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 		}, iptRepository);
 	}
 
-	/**
-	 * Install a new database type as needed.
-	 */
-	private ProvDatabaseType installDatabaseType(final UpdateContext context, final String code,
-			final DatabasePrice aType) {
-		final var type = context.getDatabaseTypes().computeIfAbsent(code, c -> {
-			final var newType = new ProvDatabaseType();
-			newType.setNode(context.getNode());
-			newType.setCode(c);
-			return newType;
-		});
-
-		// Merge as needed
-		return copyAsNeeded(context, type, t -> {
-			t.setName("DB " + aType.getCpu() + "vCPU " + aType.getMemory() + "GiB");
-			t.setCpu((double) aType.getCpu());
-			t.setRam((int) aType.getMemory() * 1024); // Convert in MiB
-			t.setConstant(true);
-			t.setAutoScale(false);
-
-			// Rating
-			t.setCpuRate(Rate.MEDIUM);
-			t.setRamRate(Rate.MEDIUM);
-			t.setNetworkRate(Rate.MEDIUM);
-			t.setStorageRate(Rate.MEDIUM);
-		}, dtRepository);
-	}
-
-	/**
-	 * Install a new instance price as needed.
-	 */
-	private void installDatabasePrice(final UpdateContext context, final ProvInstancePriceTerm term,
-			final String localCode, final ProvDatabaseType type, final double monthlyCost, final String engine,
-			final String storageEngine, final boolean byol, final String region) {
-		final var price = context.getPreviousDatabase().computeIfAbsent(region + "/" + localCode, c -> {
-			// New instance price
-			final var newPrice = new ProvDatabasePrice();
-			newPrice.setCode(c);
-			return newPrice;
-		});
-
-		copyAsNeeded(context, price, p -> {
-			p.setLocation(installRegion(context, region));
-			p.setEngine(engine.toUpperCase(Locale.ENGLISH));
-			p.setStorageEngine(storageEngine);
-			p.setLicense(null /* ProvInstancePrice.LICENSE_BYOL */);
-			p.setTerm(term);
-			p.setType(type);
-			p.setPeriod(term.getPeriod());
-		});
-
-		// Update the cost
-		saveAsNeeded(context, price, round3Decimals(monthlyCost), dpRepository);
-	}
 
 	public void installSupportPrice(final UpdateContext context, final String code, final ProvSupportPrice aPrice) {
 		final var price = context.getPreviousSupport().computeIfAbsent(code, c -> {

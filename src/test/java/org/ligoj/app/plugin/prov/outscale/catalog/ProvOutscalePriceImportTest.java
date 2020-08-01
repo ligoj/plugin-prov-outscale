@@ -430,8 +430,6 @@ class ProvOutscalePriceImportTest extends AbstractServerTest {
 		configuration.delete(OutscalePriceImport.CONF_API_PRICES);
 		configuration.put(OutscalePriceImport.CONF_REGIONS, "(sfo1|sfo2|nyc1|sgp1)");
 		configuration.put(OutscalePriceImport.CONF_ITYPE, "(m6-|s-).*");
-		configuration.put(OutscalePriceImport.CONF_DTYPE, "(db-1|db-2).*");
-		configuration.put(OutscalePriceImport.CONF_ENGINE, "(MYSQL)");
 		configuration.put(OutscalePriceImport.CONF_OS, "(WINDOWS|LINUX|CENTOS)");
 
 		final var quote = installAndConfigure();
