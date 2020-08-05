@@ -3,7 +3,6 @@
  */
 package org.ligoj.app.plugin.prov.outscale;
 
-import java.io.IOException;
 import java.util.Map;
 
 import javax.ws.rs.Path;
@@ -13,10 +12,8 @@ import javax.ws.rs.core.MediaType;
 import org.ligoj.app.plugin.prov.AbstractProvResource;
 import org.ligoj.app.plugin.prov.ProvResource;
 import org.ligoj.app.plugin.prov.catalog.ImportCatalogService;
-import org.ligoj.app.plugin.prov.outscale.catalog.OutscalePriceImport;
 import org.ligoj.app.plugin.prov.model.VmOs;
-import org.ligoj.bootstrap.core.curl.CurlRequest;
-import org.ligoj.bootstrap.core.validation.ValidationJsonException;
+import org.ligoj.app.plugin.prov.outscale.catalog.OutscalePriceImport;
 import org.ligoj.bootstrap.resource.system.configuration.ConfigurationResource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -32,12 +29,12 @@ public class ProvOutscalePluginResource extends AbstractProvResource implements 
 	/**
 	 * Plug-in Key shortcut
 	 */
-	public static final String PLUGIN_KEY = "service:prov:digitalocean";
+	public static final String PLUGIN_KEY = "service:prov:outscale";
 
 	/**
 	 * Plug-in key.
 	 */
-	public static final String SERVICE_URL = ProvResource.SERVICE_URL + "/digitalocean";
+	public static final String SERVICE_URL = ProvResource.SERVICE_URL + "/outscale";
 
 	/**
 	 * Plug-in key.
@@ -47,7 +44,7 @@ public class ProvOutscalePluginResource extends AbstractProvResource implements 
 	/**
 	 * Default management URL end-point.
 	 */
-	private static final String DEFAULT_API_URL = "https://api.digitalocean.com/v2";
+	private static final String DEFAULT_API_URL = "https://outscale.ligoj.io";
 
 	/**
 	 * API Management URL.
@@ -77,19 +74,6 @@ public class ProvOutscalePluginResource extends AbstractProvResource implements 
 	}
 
 	/**
-	 * Execute an API operation for the check.
-	 *
-	 * @param parameters The subscription parameters.
-	 * @param processor  The processor used to authenticate and execute the request.
-	 */
-	protected void authenticate(final Map<String, String> parameters, final OutscaleCurlProcessor processor) {
-		processor.setToken(parameters.get(PARAMETER_TOKEN));
-		if (!processor.process(new CurlRequest("GET", getApiUrl() + "/projects"))) {
-			throw new ValidationJsonException(PARAMETER_TOKEN, "digitalocean-login");
-		}
-	}
-
-	/**
 	 * Return the management URL.
 	 *
 	 * @return The management URL.
@@ -98,20 +82,9 @@ public class ProvOutscalePluginResource extends AbstractProvResource implements 
 		return configuration.get(CONF_API_URL, DEFAULT_API_URL);
 	}
 
-	/**
-	 * Check the server is available with enough permission to query VM. Requires "VIRTUAL MACHINE CONTRIBUTOR"
-	 * permission.
-	 *
-	 * @param parameters The subscription parameters.
-	 */
-	protected void validateAdminAccess(final Map<String, String> parameters) {
-		authenticate(parameters, new OutscaleCurlProcessor());
-	}
-
 	@Override
 	public boolean checkStatus(final Map<String, String> parameters) {
 		// Status is UP <=> Administration access is UP (if defined)
-		validateAdminAccess(parameters);
 		return true;
 	}
 
@@ -119,12 +92,12 @@ public class ProvOutscalePluginResource extends AbstractProvResource implements 
 	 * Fetch the prices from the DigitalOcean server. Install or update the prices
 	 */
 	@Override
-	public void install() throws IOException {
+	public void install() throws Exception {
 		priceImport.install(false);
 	}
 
 	@Override
-	public void updateCatalog(final String node, final boolean force) throws IOException {
+	public void updateCatalog(final String node, final boolean force) throws Exception {
 		// Digital Ocean catalog is shared with all instances, require tool level access
 		nodeResource.checkWritableNode(KEY);
 		priceImport.install(force);
@@ -133,7 +106,6 @@ public class ProvOutscalePluginResource extends AbstractProvResource implements 
 	@Override
 	public void create(final int subscription) {
 		// Authenticate only for the check
-		authenticate(subscriptionResource.getParameters(subscription), new OutscaleCurlProcessor());
 	}
 
 	@Override

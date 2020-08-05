@@ -4,6 +4,7 @@
 package org.ligoj.app.plugin.prov.outscale.catalog;
 
 import java.util.List;
+import java.util.Map;
 
 import org.ligoj.app.plugin.prov.catalog.AbstractUpdateContext;
 
@@ -20,16 +21,23 @@ public class UpdateContext extends AbstractUpdateContext {
 	// Specific Context
 
 	/**
-	 * Database enabled regions.
-	 * 
-	 * @see <a href="https://www.digitalocean.com/docs/platform/availability-matrix/">DB availability</a>
+	 * Terms as defined by Outscale
 	 */
-	private List<String> regionsDatabase;
+	private Map<String, Term> csvTerms;
+
+	/**
+	 * Cost RAM.
+	 */
+	private CsvPrice costRam;
 	
 	/**
-	 * Volume enabled regions.
-	 * 
-	 * @see <a href="https://www.digitalocean.com/docs/platform/availability-matrix/">DB availability</a>
+	 * Dedicated tenancy cost.
 	 */
-	private List<String> regionsVolume;
+	private CsvPrice dedicated;
+
+	/**
+	 * All CSV costs.
+	 */
+	private Map<String, Map<String, List<CsvPrice>>> csvPrices;
+
 }

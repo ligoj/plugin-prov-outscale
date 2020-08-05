@@ -11,8 +11,6 @@ import static org.ligoj.app.plugin.prov.quote.instance.QuoteInstanceQuery.builde
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
-import java.util.regex.Pattern;
 
 import javax.annotation.PostConstruct;
 import javax.transaction.Transactional;
@@ -38,7 +36,6 @@ import org.ligoj.app.plugin.prov.QuoteVo;
 import org.ligoj.app.plugin.prov.catalog.AbstractImportCatalogResource;
 import org.ligoj.app.plugin.prov.catalog.ImportCatalogResource;
 import org.ligoj.app.plugin.prov.dao.ProvQuoteRepository;
-import org.ligoj.app.plugin.prov.outscale.ProvOutscalePluginResource;
 import org.ligoj.app.plugin.prov.model.ProvLocation;
 import org.ligoj.app.plugin.prov.model.ProvQuote;
 import org.ligoj.app.plugin.prov.model.ProvQuoteInstance;
@@ -49,6 +46,7 @@ import org.ligoj.app.plugin.prov.model.ProvUsage;
 import org.ligoj.app.plugin.prov.model.Rate;
 import org.ligoj.app.plugin.prov.model.SupportType;
 import org.ligoj.app.plugin.prov.model.VmOs;
+import org.ligoj.app.plugin.prov.outscale.ProvOutscalePluginResource;
 import org.ligoj.app.plugin.prov.quote.database.ProvQuoteDatabaseResource;
 import org.ligoj.app.plugin.prov.quote.database.QuoteDatabaseQuery;
 import org.ligoj.app.plugin.prov.quote.instance.ProvQuoteInstanceResource;
@@ -205,52 +203,6 @@ class ProvOutscalePriceImportTest extends AbstractServerTest {
 	}
 
 	@Test
-	void isEnabledRegionDatabaseDisabled() {
-		final var context = new UpdateContext();
-		context.setValidRegion(Pattern.compile("--"));
-		Assertions.assertFalse(resource.isEnabledRegionDatabase(context, "any"));
-	}
-
-	@Test
-	void isEnabledRegionDatabaseUnavailable() {
-		final var context = new UpdateContext();
-		context.setValidRegion(Pattern.compile("sf1"));
-		context.setRegionsDatabase(Collections.singletonList("sf2"));
-		Assertions.assertFalse(resource.isEnabledRegionDatabase(context, "sf1"));
-	}
-
-	@Test
-	void isEnabledRegionDatabaseAvailable() {
-		final var context = new UpdateContext();
-		context.setValidRegion(Pattern.compile("sf1"));
-		context.setRegionsDatabase(Collections.singletonList("sf1"));
-		Assertions.assertTrue(resource.isEnabledRegionDatabase(context, "sf1"));
-	}
-
-	@Test
-	void isEnabledRegionVolumeDisabled() {
-		final var context = new UpdateContext();
-		context.setValidRegion(Pattern.compile("--"));
-		Assertions.assertFalse(resource.isEnabledRegionVolume(context, "any"));
-	}
-
-	@Test
-	void isEnabledRegionVolumeUnavailable() {
-		final var context = new UpdateContext();
-		context.setValidRegion(Pattern.compile("sf1"));
-		context.setRegionsVolume(Collections.singletonList("sf2"));
-		Assertions.assertFalse(resource.isEnabledRegionVolume(context, "sf1"));
-	}
-
-	@Test
-	void isEnabledRegionVolumeAvailable() {
-		final var context = new UpdateContext();
-		context.setValidRegion(Pattern.compile("sf1"));
-		context.setRegionsVolume(Collections.singletonList("sf1"));
-		Assertions.assertTrue(resource.isEnabledRegionVolume(context, "sf1"));
-	}
-
-	@Test
 	void installOffLine() throws Exception {
 		// Install a new configuration
 		final var quote = install();
@@ -328,8 +280,8 @@ class ProvOutscalePriceImportTest extends AbstractServerTest {
 		var lookupB = qbResource.lookup(subscription, QuoteDatabaseQuery.builder().cpu(1).engine("MYSQL").build());
 		Assertions.assertNull(lookupB.getPrice().getEdition());
 		Assertions.assertEquals("nyc1/monthly/db-1-1/MySQL", lookupB.getPrice().getCode());
-		Assertions.assertEquals(1024, lookupB.getPrice().getType().getRam().intValue());
-		Assertions.assertEquals(1, lookupB.getPrice().getType().getCpu().intValue());
+		Assertions.assertEquals(1024, lookupB.getPrice().getType().getRam());
+		Assertions.assertEquals(1, lookupB.getPrice().getType().getCpu());
 		Assertions.assertNull(lookupB.getPrice().getStorageEngine());
 	}
 

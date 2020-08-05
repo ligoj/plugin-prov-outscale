@@ -3,24 +3,28 @@
  */
 package org.ligoj.app.plugin.prov.outscale.catalog;
 
+import java.io.BufferedReader;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
+import java.io.InputStreamReader;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.EnumUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.ligoj.app.plugin.prov.catalog.AbstractImportCatalogResource;
-import org.ligoj.app.plugin.prov.catalog.AbstractUpdateContext;
 import org.ligoj.app.plugin.prov.model.ImportCatalogStatus;
-import org.ligoj.app.plugin.prov.model.ProvDatabaseType;
 import org.ligoj.app.plugin.prov.model.ProvInstancePrice;
 import org.ligoj.app.plugin.prov.model.ProvInstancePriceTerm;
 import org.ligoj.app.plugin.prov.model.ProvInstanceType;
@@ -35,13 +39,12 @@ import org.ligoj.app.plugin.prov.model.Rate;
 import org.ligoj.app.plugin.prov.model.VmOs;
 import org.ligoj.app.plugin.prov.outscale.ProvOutscalePluginResource;
 import org.ligoj.bootstrap.core.INamableBean;
-import org.ligoj.bootstrap.core.curl.CurlProcessor;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * The provisioning price service for Digital Ocean. Manage install or update of prices.<br>
@@ -51,9 +54,14 @@ import lombok.Setter;
  * @see <a href="https://wiki.outscale.net/display/EN/Getting+the+Price+of+Your+Instances">Reservation</a>
  * @see <a href="https://wiki.outscale.net/pages/viewpage.action?pageId=43061335">Locations</a>
  * @see <a href="https://fr.outscale.com/support-technique/">Support</a>
+ * @see <a href="https://wiki.outscale.net/pages/viewpage.action?pageId=43066330">Instance Types</a>
+ * @see <a href="https://wiki.outscale.net/display/EN/About+Volumes">Volumes</a>
+ * @see <a href="https://wiki.outscale.net/display/FR/Types+d'instances">Instance types</a>
+ * 
  */
 @Component
 @Setter
+@Slf4j
 public class OutscalePriceImport extends AbstractImportCatalogResource {
 
 	/**
@@ -69,7 +77,7 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 	/**
 	 * Default pricing URL.
 	 */
-	protected static final String DEFAULT_API_PRICES = "https://en.outscale.com/pricing/";
+	protected static final String DEFAULT_API_PRICES = "https://outscale.ligoj.io";
 
 	/**
 	 * Name space for local configuration files
@@ -86,6 +94,15 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 	 */
 	public static final String CONF_OS = ProvOutscalePluginResource.KEY + ":os";
 
+	private static final Pattern SQL_SERVER_PATTERN = Pattern.compile(".*(SQL Server[^(]*).*");
+	private static final Pattern BYOL_PATTERN = Pattern.compile(".*VDA.*");
+	private static final Pattern TERM_PATTERN = Pattern.compile(".*_([hmy][^_]+ly).*");
+	private static final Pattern MIN_CPU_PATTERN = Pattern.compile(".*\\s+([0-9]+)\\s+c[^\\s]+\\s+min.*");
+	private static final Pattern INCR_CPU_PATTERN = Pattern.compile(".*_([0-9]+)cores.*");
+
+	protected static final TypeReference<Map<String, Term>> MAP_TERMS = new TypeReference<>() {
+		// Nothing to extend
+	};
 
 	private String getPricesApi() {
 		return configuration.get(CONF_API_PRICES, DEFAULT_API_PRICES);
@@ -102,7 +119,7 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 	 * @param force When <code>true</code>, all cost attributes are update.
 	 * @throws IOException When CSV or XML files cannot be read.
 	 */
-	public void install(final boolean force) throws IOException {
+	public void install(final boolean force) throws IOException, URISyntaxException {
 		final UpdateContext context = initContext(new UpdateContext(), ProvOutscalePluginResource.KEY, force);
 		final var node = context.getNode();
 
@@ -111,11 +128,9 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 		context.setValidOs(Pattern.compile(configuration.get(CONF_OS, ".*"), Pattern.CASE_INSENSITIVE));
 		context.setValidInstanceType(Pattern.compile(configuration.get(CONF_ITYPE, ".*"), Pattern.CASE_INSENSITIVE));
 		context.setValidRegion(Pattern.compile(configuration.get(CONF_REGIONS, ".*")));
-		context.getMapRegionToName().putAll(toMap("digitalocean/regions.json", MAP_LOCATION));
+		context.getMapRegionToName().putAll(toMap("outscale/regions.json", MAP_LOCATION));
 		context.setInstanceTypes(itRepository.findAllBy(BY_NODE, node).stream()
 				.collect(Collectors.toMap(ProvInstanceType::getCode, Function.identity())));
-		context.setDatabaseTypes(dtRepository.findAllBy(BY_NODE, node).stream()
-				.collect(Collectors.toMap(ProvDatabaseType::getCode, Function.identity())));
 		context.setPriceTerms(iptRepository.findAllBy(BY_NODE, node).stream()
 				.collect(Collectors.toMap(ProvInstancePriceTerm::getCode, Function.identity())));
 		context.setStorageTypes(stRepository.findAllBy(BY_NODE, node).stream()
@@ -129,59 +144,36 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 		context.setRegions(locationRepository.findAllBy(BY_NODE, context.getNode()).stream()
 				.filter(r -> isEnabledRegion(context, r))
 				.collect(Collectors.toMap(INamableBean::getName, Function.identity())));
-		context.setRegionsDatabase(objectMapper.readValue(
-				IOUtils.toString(new ClassPathResource("digitalocean/regions-database.json").getInputStream(),
-						StandardCharsets.UTF_8),
-				new TypeReference<List<String>>() {
-				}));
-		context.setRegionsVolume(objectMapper
-				.readValue(IOUtils.toString(new ClassPathResource("digitalocean/regions-volume.json").getInputStream(),
-						StandardCharsets.UTF_8), new TypeReference<List<String>>() {
-						}));
-
-		// Fetch the remote prices stream and build the prices object
-		nextStep(node, "retrieve-catalog");
 		context.setPrevious(ipRepository.findAllBy("term.node", node).stream()
 				.collect(Collectors.toMap(ProvInstancePrice::getCode, Function.identity())));
+		// Term definitions
+		final var terms = toMap("outscale/terms.json", MAP_TERMS);
+		terms.entrySet().forEach(e -> {
+			final var term = e.getValue();
+			term.setEntity(installPriceTerm(context, e.getKey(), term.getPeriod()));
+			term.getConverters().put(BillingPeriod.HOURLY, term.getPeriod() * context.getHoursMonth());
+			if (term.getPeriod() >= 1) {
+				term.getConverters().put(BillingPeriod.MONTHLY, (double) term.getPeriod());
+			}
+			if (term.getPeriod() >= 12) {
+				term.getConverters().put(BillingPeriod.YEARLY, term.getPeriod() / 12d);
+			}
+		});
+		context.setCsvTerms(terms);
 
-		// Instance(VM)
-		var monthlyTerm = installPriceTerm(context, "monthly", 1);
-		var hourlyTerm = installPriceTerm(context, "hourly", 0);
+		// Fetch the remote prices stream and build the price objects
+		nextStep(node, "retrieve-catalog");
+		buildModel(context, getPricesApi());
 
-		try (var curl = new CurlProcessor()) {
-			final var rawJson = StringUtils.defaultString(curl.get(getPricesApi() + "/options_for_create.json"), "{}");
-			final var options = objectMapper.readValue(rawJson, Options.class);
-			final var regionIds = new HashMap<Integer, ProvLocation>();
+		// Instances
+		nextStep(node, "install-instances");
+		installInstances(context);
 
-			// For each price/region/OS/software
-			// Install term, type and price
-			nextStep(node, "install-vm");
-			options.setRegions(options.getRegions().stream().filter(r -> isEnabledRegion(context, r.getSlug()))
-					.collect(Collectors.toList()));
-			options.getRegions()
-					.forEach(r -> regionIds.put(r.getId(), installRegion(context, r.getSlug(), r.getName())));
-			options.setSizes(options.getSizes().stream().filter(s -> isEnabledType(context, s.getName()))
-					.collect(Collectors.toList()));
-			options.getSizes().forEach(s -> s.setType(installInstanceType(context, s.getName(), s)));
-			options.getDistributions().stream().filter(d -> isEnabledOs(context, getOs(d.getName()))).forEach(d -> {
-				final var os = getOs(d.getName());
-				getRegionsUnion(d.getImages()).stream().map(regionIds::get).filter(Objects::nonNull)
-						.forEach(r -> options.getSizes().forEach(s -> {
-							// Install monthly based price
-							installInstancePrice(context, monthlyTerm, os, s.getType(), s.getPricePerMonth(), r);
-
-							// Install hourly based price
-							installInstancePrice(context, hourlyTerm, getOs(d.getName()), s.getType(),
-									s.getPricePerHour() * context.getHoursMonth(), r);
-						}));
-			});
-		}
-
-		// Install storage
+		// Storages
+		nextStep(node, "install-storages");
 		installStorage(context);
 
 		// Support
-		// Install type and price
 		nextStep(node, "install-support");
 		csvForBean.toBean(ProvSupportType.class, PREFIX + "/prov-support-type.csv").forEach(t -> {
 			installSupportType(context, t.getCode(), t);
@@ -192,42 +184,47 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 	}
 
 	/**
-	 * Check a database is available within the given region.
-	 * 
-	 * @param context The update context.
-	 * @param region  The region code to test.
-	 * @return <code>true</code> when the region is available and enabled for the database service.
+	 * Install instances
 	 */
-	protected boolean isEnabledRegionDatabase(final UpdateContext context, final String region) {
-		return isEnabledRegion(context, region) && context.getRegionsDatabase().contains(region);
-	}
+	private void installInstances(final UpdateContext context) {
 
-	@Override
-	protected boolean isEnabledEngine(final AbstractUpdateContext context, final String engine) {
-		// REDIS is not really an SGBD
-		return super.isEnabledEngine(context, engine) && !engine.equalsIgnoreCase("REDIS");
-	}
+		// Extract the RAM cost
+		context.setCostRam(getPrices(context, "FCU", "Virtual machines").filter(p -> "c_fcu_ram".equals(p.getCode()))
+				.findFirst().orElse(new CsvPrice()));
 
-	/**
-	 * Check a volume is available within the given region.
-	 * 
-	 * @param context The update context.
-	 * @param region  The region code to test.
-	 * @return <code>true</code> when the region is available and enabled for the volume service.
-	 */
-	protected boolean isEnabledRegionVolume(UpdateContext context, final String region) {
-		return isEnabledRegion(context, region) && context.getRegionsVolume().contains(region);
+		// Extract the dedicated cost
+		context.setDedicated(getPrices(context, "FCU", "Virtual machines")
+				.filter(p -> "c_fcu_dedicated_vm_extra_hourly".equals(p.getCode())).findFirst().orElse(new CsvPrice()));
+
+		// Compute license and software
+		getLicenses(context).forEach(p -> {
+			p.setOs(licenseToVmOs(p.getCode()));
+			p.setSoftware(licenseToSoftware(p.getDescription()));
+			p.setByol(licenseToByol(p.getDescription()));
+			p.setBillingPeriod(licenseToBillingPeriod(p.getCode()));
+			p.setMinCpu(licenseToMinCpu(p.getDescription()));
+			p.setIncrementCpu(licenseToIncrementCpu(p.getCode()));
+			p.setBillingPeriods(new ArrayList<>());
+		});
+		getLicenses(context).forEach(p -> {
+			getLicenses(context).filter(p2 -> p2.getOs() == p.getOs()
+					&& Objects.equals(p2.getSoftware(), p.getSoftware()) && Objects.equals(p2.getByol(), p.getByol())
+					&& p2.getBillingPeriod() != p.getBillingPeriod()).forEach(p2 -> {
+						p2.setCode(null); // Ignore this price for the next process
+						p.getBillingPeriods().add(p2); // Merge this price into the root price
+					});
+			p.getBillingPeriods().add(p);
+		});
+
+		// Install the specific prices
+		installServicePrices(this::installInstancePrice, context, "FCU", "Virtual machines");
 	}
 
 	/**
 	 * Install the storage types and prices.
 	 */
 	private void installStorage(final UpdateContext context) {
-		final var node = context.getNode();
-		nextStep(node, "install-vm-storage");
-
-		// Block storage
-		// See https://www.digitalocean.com/docs/volumes/
+		// Block storage types
 		// Standard
 		installBlockStorage(context, "do-block-storage-standard", t -> {
 			t.setIops(5000);
@@ -249,6 +246,9 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 			t.setDurability9(11);
 			t.setOptimized(ProvStorageOptimized.DURABILITY);
 		});
+
+		installServicePrices(this::installInstancePrice, context, "BSU", "Bloc storage");
+		installServicePrices(this::installInstancePrice, context, "OSU", "Object storage");
 		context.getRegions().keySet().stream().filter(r -> isEnabledRegion(context, r))
 				.forEach(r -> installStoragePrice(context, r, ssType, 0.05, r + "/" + ssType.getCode()));
 	}
@@ -260,19 +260,8 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 			t.setMaximal(16 * 1024d); // 16TiB
 			t.setOptimized(ProvStorageOptimized.IOPS);
 		});
-		context.getRegions().keySet().stream().filter(r -> isEnabledRegionVolume(context, r))
+		context.getRegions().keySet().stream().filter(r -> isEnabledRegion(context, r))
 				.forEach(region -> installStoragePrice(context, region, type, 0.1, region + "/" + type.getCode()));
-	}
-
-	private VmOs getOs(final String osName) {
-		return EnumUtils.getEnum(VmOs.class, osName.replace("redhat", "RHEL").replace("sles", "SUSE").toUpperCase());
-	}
-
-	/**
-	 * For a given image return Union of region_ids
-	 */
-	private Set<Integer> getRegionsUnion(final List<Image> images) {
-		return images.stream().map(image -> image.getRegionIds()).flatMap(List::stream).collect(Collectors.toSet());
 	}
 
 	/**
@@ -318,18 +307,232 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 	}
 
 	/**
+	 * Add a regional price in CSV model.
+	 */
+	private void addRegionalPrice(final CsvPrice csv, final String region, final Double cost) {
+		if (cost != null) {
+			csv.getRegions().put(region, cost);
+		}
+	}
+
+	/**
+	 * Download the remote CSV catalog, normalize data and build the in-memory model.
+	 */
+	private void buildModel(final UpdateContext context, final String endpoint) throws IOException, URISyntaxException {
+		// Track the created instance to cache partial costs
+		log.info("Outscale OnDemand/Reserved import started@{} ...", endpoint);
+
+		// Get the remote prices stream
+		var prices = new HashMap<String, Map<String, List<CsvPrice>>>();
+		try (var reader = new BufferedReader(new InputStreamReader(new URI(endpoint).toURL().openStream()))) {
+			// Pipe to the CSV reader
+			final var csvReader = new CsvForBeanOutscale(reader);
+
+			// Build the AWS instance prices from the CSV
+			var csv = csvReader.read();
+			while (csv != null) {
+
+				// Make regional prices more readable
+				addRegionalPrice(csv, "eu-west-2", csv.getRegionEUW2());
+				addRegionalPrice(csv, "cloudgouv-eu-west-1", csv.getRegionSEC1());
+				addRegionalPrice(csv, "us-west-1", csv.getRegionUSW1());
+				addRegionalPrice(csv, "us-east-2", csv.getRegionUSE2());
+				addRegionalPrice(csv, "cn-southeast-1", csv.getRegionCNSE1());
+
+				// Add to the prices map
+				prices.computeIfAbsent(csv.getService(), k -> new HashMap<>())
+						.computeIfAbsent(csv.getType(), k -> new ArrayList<>()).add(csv);
+
+				// Read the next one
+				csv = csvReader.read();
+			}
+		} finally {
+			// Report
+			log.info("Outscale OnDemand/Reserved import finished: {} prices ({})", context.getPrices().size(),
+					String.format("%+d", context.getPrices().size()));
+		}
+
+		// Store the prices in context
+		context.setCsvPrices(prices);
+	}
+
+	private Stream<CsvPrice> getLicenses(final UpdateContext context) {
+		return context.getCsvPrices().getOrDefault("Licences", Collections.emptyMap()).entrySet().stream()
+				.flatMap(e -> e.getValue().stream()).filter(p -> p.getCode() != null);
+	}
+
+	private Stream<CsvPrice> getPrices(final UpdateContext context, final String service, final String type) {
+		return getPrices(context.getCsvPrices(), service, type);
+	}
+
+	private Stream<CsvPrice> getPrices(final Map<String, Map<String, List<CsvPrice>>> prices, final String service,
+			final String type) {
+		return prices.getOrDefault(service, Collections.emptyMap()).getOrDefault(type, Collections.emptyList())
+				.stream();
+	}
+
+	private void installServicePrices(final QuadConsumer<UpdateContext, CsvPrice, ProvLocation, Double> installer,
+			final UpdateContext context, final String service, final String type) {
+		getPrices(context.getCsvPrices(), service, type)
+				.forEach(v -> v.getRegions().entrySet().stream().filter(e -> isEnabledRegion(context, e.getKey()))
+						.forEach(e -> installer.accept(context, v, installRegion(context, e.getKey()), e.getValue())));
+	}
+
+	/**
+	 * Return the OS from the license.
+	 */
+	protected VmOs licenseToVmOs(final String licence) {
+		if (licence.contains("Microsoft") || licence.contains("Windows")) {
+			return VmOs.WINDOWS;
+		}
+		if (licence.contains("Oracle")) {
+			return VmOs.ORACLE;
+		}
+		if (licence.contains("Red Hat")) {
+			return VmOs.RHEL;
+		}
+
+		// Fallback to Linux
+		return VmOs.LINUX;
+	}
+
+	/**
+	 * Return the software from the license.
+	 */
+	protected String licenseToSoftware(final String licence) {
+		final var matches = SQL_SERVER_PATTERN.matcher(licence);
+		if (matches.find()) {
+			return matches.group(1);
+		}
+		return null;
+	}
+
+	/**
+	 * Indicate the license is associated to BYOL
+	 */
+	protected String licenseToByol(final String licence) {
+		final var matches = BYOL_PATTERN.matcher(licence);
+		if (matches.find()) {
+			return "BYOL";
+		}
+		return null;
+	}
+
+	/**
+	 * Indicate the license is associated to a specific term name.
+	 */
+	protected BillingPeriod licenseToBillingPeriod(final String licence) {
+		final var matches = TERM_PATTERN.matcher(licence);
+		if (matches.find()) {
+			return EnumUtils.getEnum(BillingPeriod.class, matches.group(1).toUpperCase(), BillingPeriod.HOURLY);
+		}
+		// Default is hourly
+		return BillingPeriod.HOURLY;
+	}
+
+	/**
+	 * Indicate the license is associated to a minimum vCPU counts.
+	 */
+	protected int licenseToMinCpu(final String licence) {
+		final var matches = MIN_CPU_PATTERN.matcher(licence);
+		if (matches.find()) {
+			return Integer.parseInt(matches.group(1), 10);
+		}
+		// Default is 0
+		return 0;
+	}
+
+	/**
+	 * Indicate the license is associated to a minimum vCPU counts.
+	 */
+	protected Double licenseToIncrementCpu(final String licence) {
+		final var matches = INCR_CPU_PATTERN.matcher(licence);
+		if (matches.find()) {
+			return Double.valueOf(matches.group(1));
+		}
+		// Not a per-core price
+		return null;
+	}
+
+	/**
 	 * Install a new instance price as needed.
 	 */
-	private void installInstancePrice(final UpdateContext context, final ProvInstancePriceTerm term, final VmOs os,
-			final ProvInstanceType type, final double monthlyCost, final ProvLocation region) {
-		final var price = context.getPrevious().computeIfAbsent(
-				region.getName() + "/" + term.getCode() + "/" + os.name().toLowerCase() + "/" + type.getCode(),
-				code -> {
-					// New instance price (not update mode)
-					final var newPrice = new ProvInstancePrice();
-					newPrice.setCode(code);
-					return newPrice;
-				});
+	private void installInstancePrice(final UpdateContext context, final CsvPrice price, final ProvLocation region,
+			final Double cpuCost) {
+		final var type = installInstanceType(context, price);
+		final var costRam = context.getCostRam().getRegions().getOrDefault(region.getName(), 0d);
+		final var dRate = context.getDedicated().getRegions().getOrDefault(region.getName(), 0d) + 1d;
+		if (type == null) {
+			// Unsupported type, or invalid row -> ignore
+			return;
+		}
+
+		// Iterate over Outscale contracts (term)
+		context.getCsvTerms().values().forEach(csvTerm -> {
+			final var term = csvTerm.getEntity();
+			final var tRate = context.getHoursMonth() * csvTerm.getRate();
+			final var tCpuCost = cpuCost * tRate;
+			final var tRamCost = costRam * tRate;
+			final var dtCpuCost = tCpuCost * dRate;
+			final var dtRamCost = tRamCost * dRate;
+			final var converters = csvTerm.getConverters();
+
+			// Linux prices
+			installInstancePrice(context, region, term, type, 0d, tCpuCost, tRamCost, ProvTenancy.SHARED, price);
+			installInstancePrice(context, region, term, type, 0d, dtCpuCost, dtRamCost, ProvTenancy.DEDICATED, price);
+
+			// License prices
+			getLicenses(context).forEach(l -> {
+				final var billingPeriods = BillingPeriod.values();
+				final var billingIndex = ArrayUtils.indexOf(billingPeriods, csvTerm.getBillingPeriod());
+				for (int i = billingIndex; i < billingPeriods.length; i++) {
+					final var bPeriod = billingPeriods[i];
+					final var pt = l.getBillingPeriods().stream().filter(
+							t -> t.getBillingPeriod() == bPeriod && t.getRegions().containsKey(region.getName()))
+							.findFirst().orElse(null);
+					if (pt != null) {
+						// Best license term match found
+						final var lrCost = pt.getRegions().get(region.getName()) * tRate * converters.get(bPeriod);
+						final Double ltCpuCost;
+						final Double ltCost;
+						if (l.getIncrementCpu() == null) {
+							// Per VM pricing
+							ltCpuCost = 0d;
+							ltCost = lrCost;
+						} else {
+							// Per core pricing
+							ltCpuCost = lrCost / l.getIncrementCpu();
+							ltCost = 0d;
+						}
+						installInstancePrice(context, region, term, type, ltCost, tCpuCost + ltCpuCost, tRamCost,
+								ProvTenancy.SHARED, pt);
+						installInstancePrice(context, region, term, type, ltCost, dtCpuCost + ltCpuCost, dtRamCost,
+								ProvTenancy.DEDICATED, pt);
+						break;
+					}
+				}
+			});
+		});
+	}
+
+	private void installInstancePrice(final UpdateContext context, final ProvLocation region,
+			final ProvInstancePriceTerm term, final ProvInstanceType type, final Double monthlyCost,
+			final Double cpuCost, final Double ramCost, final ProvTenancy tenancy, final CsvPrice csvpPrice) {
+		final var os = csvpPrice.getOs();
+		final var codeParts = new ArrayList<String>(
+				List.of(region.getName(), term.getCode(), os.name(), type.getCode(), tenancy.name()));
+		if (csvpPrice.getByol() != null) {
+			codeParts.add(csvpPrice.getByol());
+		}
+		if (csvpPrice.getSoftware() != null) {
+			codeParts.add(csvpPrice.getSoftware());
+		}
+		final var price = context.getPrevious().computeIfAbsent(String.join(",", codeParts).toLowerCase(), code -> {
+			// New instance price (not update mode)
+			final var newPrice = new ProvInstancePrice();
+			newPrice.setCode(code);
+			return newPrice;
+		});
 		copyAsNeeded(context, price, p -> {
 			p.setLocation(region);
 			p.setOs(os);
@@ -341,12 +544,31 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 
 		// Update the cost
 		saveAsNeeded(context, price, monthlyCost, ipRepository);
+
+		// Cleanup
+		getLicenses(context).forEach(p -> p.getBillingPeriods().clear());
 	}
+
+	private static final Pattern TINA_EXL_PATTERN = Pattern.compile("c_fcu_vcorev([1-9]+)_(a-z)+");
 
 	/**
 	 * Install a new instance type as needed.
 	 */
-	private ProvInstanceType installInstanceType(final UpdateContext context, final String code, final Price aType) {
+	private ProvInstanceType installInstanceType(final UpdateContext context, final CsvPrice aType) {
+		final var matcher = TINA_EXL_PATTERN.matcher(aType.getCode());
+		if (!matcher.find()) {
+			// Not a valid pattern
+			return null;
+		}
+		final var gen = Integer.parseInt(matcher.group(1), 10);
+		final var opt = matcher.group(2);
+		final var code = "tinav" + gen + ".cXrY." + opt;
+
+		// Only enabled types
+		if (isEnabledType(context, code)) {
+			return null;
+		}
+
 		final var type = context.getInstanceTypes().computeIfAbsent(code, c -> {
 			// New instance type (not update mode)
 			final var newType = new ProvInstanceType();
@@ -358,24 +580,45 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 		// Merge as needed
 		return copyAsNeeded(context, type, t -> {
 			t.setName(code);
-			t.setCpu(aType.getCpu());
-			t.setRam((int) Math.ceil(aType.getMemoryInBytes() / 1024 / 1024)); // Convert in MiB
-			t.setDescription("{Disk: " + aType.getDisk() + ", Category: " + aType.getCategorie().getName() + "}");
-			t.setConstant(true);
+			t.setCpu(0d); // Dynamic
+			t.setRam(0); // Dynamic
+			t.setDescription(aType.getDescription());
+			t.setConstant(!"medium".equals(opt));
 			t.setAutoScale(false);
 
-			// See https://www.digitalocean.com/docs/droplets/resources/choose-plan/
-			switch (aType.getCategorie().getName()) {
-			case "General Purpose" -> t.setProcessor("Intel Xeon Skylake");
-			case "CPU Intensive" -> t.setProcessor("Intel Xeon"); // Intel Skylake or Broadwell
+			// See
+			// https://wiki.outscale.net/display/FR/Types+d%27instances#Typesd'instances-ProcessorFamiliesG%C3%A9n%C3%A9rationsdeprocesseuretfamillesdeprocesseurcorrespondantes
+			switch (gen) {
+			case 2 -> t.setProcessor("Intel Xeon Skylake");
+			case 3 -> t.setProcessor("Intel Xeon Haswell");
+			case 4 -> t.setProcessor("Intel Xeon Broadwell");
+			case 5 -> t.setProcessor("Intel Xeon Skylake");
 			}
 
 			// Rating
-			t.setCpuRate(Rate.MEDIUM);
-			t.setRamRate(Rate.MEDIUM);
+			switch (opt) {
+			case "medium" -> t.setCpuRate(getRate(Rate.MEDIUM, gen));
+			case "high" -> t.setCpuRate(getRate(Rate.GOOD, gen));
+			case "highest" -> t.setCpuRate(getRate(Rate.BEST, gen));
+			}
+
+			// Rating
+			t.setRamRate(getRate(Rate.MEDIUM, gen));
 			t.setNetworkRate(Rate.MEDIUM);
 			t.setStorageRate(Rate.MEDIUM);
 		}, itRepository);
+	}
+
+	/**
+	 * Return the most precise rate from a base rate and a generation.
+	 *
+	 * @param rate The base rate.
+	 * @param gen  The generation.
+	 * @return The adjusted rate. Previous generations types are downgraded.
+	 */
+	protected Rate getRate(final Rate rate, final int gen) {
+		// Downgrade the rate for a previous generation
+		return Rate.values()[Math.max(0, rate.ordinal() - (5 - gen))];
 	}
 
 	/**
@@ -393,15 +636,14 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 		return copyAsNeeded(context, term, t -> {
 			t.setName(code /* human readable name */);
 			t.setPeriod(period);
-			t.setReservation(false);
+			t.setReservation(code.startsWith("RI"));
 			t.setConvertibleFamily(false);
 			t.setConvertibleType(false);
 			t.setConvertibleLocation(false);
-			t.setConvertibleOs(false);
+			t.setConvertibleOs(true);
 			t.setEphemeral(false);
 		}, iptRepository);
 	}
-
 
 	public void installSupportPrice(final UpdateContext context, final String code, final ProvSupportPrice aPrice) {
 		final var price = context.getPreviousSupport().computeIfAbsent(code, c -> {
@@ -458,34 +700,4 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 		return type;
 	}
 
-	/**
-	 * Install a new region as needed.<br>
-	 *
-	 * @param context The current import context.
-	 * @param region  The region code to install as needed.
-	 * @param name    The region human name.
-	 * @return The previous or the new installed region.
-	 */
-	private ProvLocation installRegion(final UpdateContext context, final String region, final String name) {
-		final var entity = context.getRegions().computeIfAbsent(region, r -> {
-			final var newRegion = new ProvLocation();
-			newRegion.setNode(context.getNode());
-			newRegion.setName(region);
-			return newRegion;
-		});
-
-		// Update the location details as needed
-		return copyAsNeeded(context, entity, r -> {
-			final var regionStats = context.getMapRegionToName().getOrDefault(region, new ProvLocation());
-			r.setContinentM49(regionStats.getContinentM49());
-			r.setCountryM49(regionStats.getCountryM49());
-			r.setCountryA2(regionStats.getCountryA2());
-			r.setPlacement(regionStats.getPlacement());
-			r.setRegionM49(regionStats.getRegionM49());
-			r.setSubRegion(regionStats.getSubRegion());
-			r.setLatitude(regionStats.getLatitude());
-			r.setLongitude(regionStats.getLongitude());
-			r.setDescription(name);
-		}, locationRepository);
-	}
 }

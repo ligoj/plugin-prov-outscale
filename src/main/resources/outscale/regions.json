@@ -7,7 +7,8 @@
         "placement": "central",
         "subRegion": "Pantin",
         "latitude": 48.8188484,
-        "longitude": 2.1583486
+        "longitude": 2.1583486,
+        "name": "EUROPE"
     },
     "us-east-2": {
         "continentM49": 19,
@@ -17,7 +18,8 @@
         "placement": "east",
         "subRegion": "Secaucus",
         "latitude": 40.7899291,
-        "longitude": -74.0566735
+        "longitude": -74.0566735,
+        "name": "USA (Est)"
     },
     "us-west-1": {
         "continentM49": 19,
@@ -27,7 +29,8 @@
         "placement": "west",
         "subRegion": "San Jose",
         "latitude": 37.3361905,
-        "longitude": -121.8905833
+        "longitude": -121.8905833,
+        "name": "USA (Ouest)"
     },
     "cn-southeast-1": {
         "continentM49": 142,
@@ -37,7 +40,8 @@
         "placement": "south-east",
         "subRegion": "Sha Tin",
         "latitude": 22.3810557,
-        "longitude": 114.1888792
+        "longitude": 114.1888792,
+        "name": "ASIE"
     },
     "cloudgouv-eu-west-1": {
         "continentM49": 150,
@@ -47,6 +51,7 @@
         "placement": "central",
         "subRegion": "Pantin",
         "latitude": 48.8188484,
-        "longitude": 2.1583486
+        "longitude": 2.1583486,
+        "name": "CLOUD SECTEUR PUBLIC"
     }
 }

@@ -6,7 +6,6 @@ package org.ligoj.app.plugin.prov.outscale;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -28,12 +27,11 @@ import org.ligoj.app.model.Parameter;
 import org.ligoj.app.model.ParameterValue;
 import org.ligoj.app.model.Project;
 import org.ligoj.app.model.Subscription;
-import org.ligoj.app.plugin.prov.outscale.catalog.OutscalePriceImport;
 import org.ligoj.app.plugin.prov.model.ProvLocation;
 import org.ligoj.app.plugin.prov.model.ProvQuote;
+import org.ligoj.app.plugin.prov.outscale.catalog.OutscalePriceImport;
 import org.ligoj.app.resource.subscription.SubscriptionResource;
 import org.ligoj.bootstrap.MatcherUtil;
-import org.ligoj.bootstrap.core.curl.CurlRequest;
 import org.ligoj.bootstrap.core.resource.BusinessException;
 import org.ligoj.bootstrap.core.validation.ValidationJsonException;
 import org.ligoj.bootstrap.resource.system.configuration.ConfigurationResource;
@@ -43,8 +41,6 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.test.annotation.Rollback;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
-
-import com.github.tomakehurst.wiremock.matching.EqualToPattern;
 
 /**
  * Test class of {@link ProvOutscalePluginResource}
@@ -87,14 +83,14 @@ class ProvOutscalePluginResourceTest extends AbstractServerTest {
 	}
 
 	@Test
-	void install() throws IOException {
+	void install() throws Exception {
 		final ProvOutscalePluginResource resource2 = new ProvOutscalePluginResource();
 		resource2.priceImport = Mockito.mock(OutscalePriceImport.class);
 		resource2.install();
 	}
 
 	@Test
-	void updateCatalog() throws IOException {
+	void updateCatalog() throws Exception {
 		// Re-Install a new configuration
 		final var resource2 = new ProvOutscalePluginResource();
 		super.applicationContext.getAutowireCapableBeanFactory().autowireBean(resource2);
@@ -148,17 +144,6 @@ class ProvOutscalePluginResourceTest extends AbstractServerTest {
 		MatcherUtil.assertThrows(Assertions.assertThrows(ValidationJsonException.class, () -> {
 			resource.checkStatus(subscriptionResource.getParametersNoCheck(subscription));
 		}), ProvOutscalePluginResource.PARAMETER_TOKEN, "digitalocean-login");
-	}
-
-	@Test
-	void processor() {
-		httpServer.stubFor(get(urlPathEqualTo("/")).withHeader("Authorization", new EqualToPattern("Bearer TOKEN"))
-				.willReturn(aResponse().withStatus(HttpStatus.SC_OK)));
-		httpServer.start();
-		try (var curl = new OutscaleCurlProcessor()) {
-			curl.setToken("TOKEN");
-			Assertions.assertTrue(curl.process(new CurlRequest("GET", "http://localhost:" + MOCK_PORT + "/")));
-		}
 	}
 
 	@Test
