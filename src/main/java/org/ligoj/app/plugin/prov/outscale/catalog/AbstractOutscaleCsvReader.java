@@ -33,7 +33,7 @@ public abstract class AbstractOutscaleCsvReader<T> extends CsvBeanReader<T> {
 		super(reader, beanType, headers);
 
 		// Makes visible this entry
-		this.csvReaderProxy = new CsvReader(reader, ',');
+		this.csvReaderProxy = new CsvReader(reader);
 	}
 
 	@Override

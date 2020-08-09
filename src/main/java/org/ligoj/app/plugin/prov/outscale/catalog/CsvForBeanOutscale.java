@@ -14,7 +14,6 @@ import java.util.Map;
 import org.ligoj.bootstrap.core.csv.AbstractCsvManager;
 import org.ligoj.bootstrap.core.csv.CsvBeanReader;
 import org.ligoj.bootstrap.core.csv.CsvReader;
-import org.ligoj.bootstrap.core.resource.TechnicalException;
 
 /**
  * Read AWS EC2 CSV input, skipping the AWS headers and non instance type rows.
@@ -28,6 +27,9 @@ public class CsvForBeanOutscale extends AbstractCsvManager {
 	 */
 	protected static final Map<String, String> HEADERS_MAPPING = new HashMap<>();
 	static {
+		HEADERS_MAPPING.put("Service", "service");
+		HEADERS_MAPPING.put("Type", "type");
+		HEADERS_MAPPING.put("Description", "name");
 		HEADERS_MAPPING.put("eu-west-2", "regionEUW2");
 		HEADERS_MAPPING.put("cloudgouv-eu-west-1", "regionSEC1");
 		HEADERS_MAPPING.put("us-west-1", "regionUSW1");
@@ -47,23 +49,11 @@ public class CsvForBeanOutscale extends AbstractCsvManager {
 
 		// Complete the standard mappings
 		final var mMapping = new HashMap<>(HEADERS_MAPPING);
-		final var csvReader = new CsvReader(reader, ',');
+		final var csvReader = new CsvReader(reader);
 
-		// Skip until the header, to be skipped too
-		List<String> values;
-		do {
-			values = csvReader.read();
-			if (values.isEmpty()) {
-				throw new TechnicalException("Premature end of CSV file, headers were not found");
-			}
-			if (values.get(0).equals("SKU")) {
-				// The real CSV header has be reached
-				this.beanReader = newCsvReader(reader,
-						values.stream().map(v -> mMapping.getOrDefault(v, "drop")).toArray(String[]::new));
-				break;
-			}
-		} while (true);
-
+		// The real CSV header has be reached
+		this.beanReader = newCsvReader(reader,
+				csvReader.read().stream().map(v -> mMapping.getOrDefault(v, "drop")).toArray(String[]::new));
 	}
 
 	protected CsvBeanReader<CsvPrice> newCsvReader(final Reader reader, final String[] headers) {
@@ -78,7 +68,7 @@ public class CsvForBeanOutscale extends AbstractCsvManager {
 	}
 
 	private boolean isValidRaw(final List<String> rawValues) {
-		return rawValues.size() > 10;
+		return rawValues.size() >= 7;
 	}
 
 	/**

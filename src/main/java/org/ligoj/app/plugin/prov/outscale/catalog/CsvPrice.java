@@ -32,16 +32,16 @@ public class CsvPrice extends DescribedBean<String> {
 	private Double regionEUW2;
 
 	// cloudgouv-eu-west-1
-	private double regionSEC1;
+	private Double regionSEC1;
 
 	// us-west-1
-	private double regionUSW1;
+	private Double regionUSW1;
 
 	// us-east-2
-	private double regionUSE2;
+	private Double regionUSE2;
 
 	// cn-southeast-1
-	private double regionCNSE1;
+	private Double regionCNSE1;
 
 	/**
 	 * Regional prices.
@@ -81,4 +81,9 @@ public class CsvPrice extends DescribedBean<String> {
 	 * Incremental CPU. Only for per-core pricing.
 	 */
 	private Double incrementCpu;
+
+	/**
+	 * Ignored property
+	 */
+	private String drop;
 }

@@ -8,5 +8,5 @@ package org.ligoj.app.plugin.prov.outscale.catalog;
  */
 public enum BillingPeriod {
 
-	HOURLY, MONTHLY, YEARLY
+	YEARLY, MONTHLY, HOURLY
 }

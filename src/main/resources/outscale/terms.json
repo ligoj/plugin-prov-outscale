@@ -2,17 +2,17 @@
     "On-demand": {
         "billingPeriod": "hourly",
         "period": 0,
-        "rate": 0
+        "rate": 1
     },
     "RI - 1 M": {
     	"billingPeriod": "monthly",
         "period": 1,
-        "rate": 0.3
+        "rate": 0.7
     },
     "RI - 1 Y": {
    		"billingPeriod": "yearly",
         "period": 12,
-        "rate": 0.4
+        "rate": 0.6
     },
     "RI - 2 Y": {
     	"billingPeriod": "yearly",
@@ -22,6 +22,6 @@
     "RI - 3 Y": {
     	"billingPeriod": "yearly",
         "period": 36,
-        "rate": 0.6
+        "rate": 0.4
     }
 }

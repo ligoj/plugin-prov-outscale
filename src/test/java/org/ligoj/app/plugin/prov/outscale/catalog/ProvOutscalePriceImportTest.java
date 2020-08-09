@@ -156,8 +156,8 @@ class ProvOutscalePriceImportTest extends AbstractServerTest {
 	}
 
 	private void resetImportTask() {
-		this.resource.getImportCatalogResource().endTask("service:prov:digitalocean", false);
-		this.resource.getImportCatalogResource().startTask("service:prov:digitalocean", t -> {
+		this.resource.getImportCatalogResource().endTask("service:prov:outscale", false);
+		this.resource.getImportCatalogResource().startTask("service:prov:outscale", t -> {
 			t.setLocation(null);
 			t.setNbInstancePrices(null);
 			t.setNbInstanceTypes(null);
@@ -171,15 +171,9 @@ class ProvOutscalePriceImportTest extends AbstractServerTest {
 	@Test
 	void installOffLineKoSizes() throws Exception {
 		configuration.put(OutscalePriceImport.CONF_API_PRICES, "http://localhost:" + MOCK_PORT);
-		httpServer.stubFor(get(urlEqualTo("/options_for_create.json")).willReturn(aResponse()
-				.withStatus(HttpStatus.SC_OK)
-				.withBody(IOUtils.toString(
-						new ClassPathResource("mock-server/digitalocean/options_for_create.json").getInputStream(),
-						"UTF-8"))));
-		httpServer.stubFor(get(urlEqualTo("/aurora.js")).willReturn(aResponse().withStatus(HttpStatus.SC_OK)
-				.withBody(IOUtils.toString(
-						new ClassPathResource("mock-server/digitalocean/aurora-ko-sizes.js").getInputStream(),
-						"UTF-8"))));
+		httpServer.stubFor(get(urlEqualTo("/prices/outscale-prices.csv"))
+				.willReturn(aResponse().withStatus(HttpStatus.SC_OK).withBody(IOUtils.toString(
+						new ClassPathResource("mock-server/outscale/outscale-prices.csv").getInputStream(), "UTF-8"))));
 		httpServer.start();
 
 		Assertions.assertThrows(BusinessException.class, () -> resource.install(false));
@@ -188,17 +182,7 @@ class ProvOutscalePriceImportTest extends AbstractServerTest {
 	@Test
 	void installOffLineKoPrices() throws Exception {
 		configuration.put(OutscalePriceImport.CONF_API_PRICES, "http://localhost:" + MOCK_PORT);
-		httpServer.stubFor(get(urlEqualTo("/options_for_create.json")).willReturn(aResponse()
-				.withStatus(HttpStatus.SC_OK)
-				.withBody(IOUtils.toString(
-						new ClassPathResource("mock-server/digitalocean/options_for_create.json").getInputStream(),
-						"UTF-8"))));
-		httpServer.stubFor(get(urlEqualTo("/aurora.js")).willReturn(aResponse().withStatus(HttpStatus.SC_OK)
-				.withBody(IOUtils.toString(
-						new ClassPathResource("mock-server/digitalocean/aurora-ko-prices.js").getInputStream(),
-						"UTF-8"))));
 		httpServer.start();
-
 		Assertions.assertThrows(BusinessException.class, () -> resource.install(false));
 	}
 
@@ -286,7 +270,7 @@ class ProvOutscalePriceImportTest extends AbstractServerTest {
 	}
 
 	private void checkImportStatus() {
-		final var status = this.resource.getImportCatalogResource().getTask("service:prov:digitalocean");
+		final var status = this.resource.getImportCatalogResource().getTask("service:prov:outscale");
 		Assertions.assertEquals(6, status.getDone());
 		Assertions.assertEquals(6, status.getWorkload());
 		Assertions.assertEquals("install-support", status.getPhase());
@@ -299,22 +283,14 @@ class ProvOutscalePriceImportTest extends AbstractServerTest {
 
 	private void mockServer() throws IOException {
 		configuration.put(OutscalePriceImport.CONF_API_PRICES, "http://localhost:" + MOCK_PORT);
-		httpServer.stubFor(get(urlEqualTo("/options_for_create.json")).willReturn(aResponse()
-				.withStatus(HttpStatus.SC_OK)
-				.withBody(IOUtils.toString(
-						new ClassPathResource("mock-server/digitalocean/options_for_create.json").getInputStream(),
-						"UTF-8"))));
-		httpServer.stubFor(get(urlEqualTo("/v2/options_for_create.json")).willReturn(aResponse()
-				.withStatus(HttpStatus.SC_OK)
-				.withBody(IOUtils.toString(
-						new ClassPathResource("mock-server/digitalocean/v2/options_for_create.json").getInputStream(),
-						"UTF-8"))));
-		httpServer.stubFor(get(urlEqualTo("/aurora.js"))
+		httpServer.stubFor(get(urlEqualTo("/prices/outscale-prices.csv"))
 				.willReturn(aResponse().withStatus(HttpStatus.SC_OK).withBody(IOUtils.toString(
-						new ClassPathResource("mock-server/digitalocean/aurora.js").getInputStream(), "UTF-8"))));
-		httpServer.stubFor(get(urlEqualTo("/v2/aurora.js"))
-				.willReturn(aResponse().withStatus(HttpStatus.SC_OK).withBody(IOUtils.toString(
-						new ClassPathResource("mock-server/digitalocean/v2/aurora.js").getInputStream(), "UTF-8"))));
+						new ClassPathResource("mock-server/outscale/outscale-prices.csv").getInputStream(), "UTF-8"))));
+		httpServer.stubFor(
+				get(urlEqualTo("/v2/prices/outscale-prices.csv")).willReturn(aResponse().withStatus(HttpStatus.SC_OK)
+						.withBody(IOUtils.toString(
+								new ClassPathResource("mock-server/outscale/v2/outscale-prices.csv").getInputStream(),
+								"UTF-8"))));
 		httpServer.start();
 	}
 
@@ -380,9 +356,9 @@ class ProvOutscalePriceImportTest extends AbstractServerTest {
 	@Test
 	void installOnLine() throws Exception {
 		configuration.delete(OutscalePriceImport.CONF_API_PRICES);
-		configuration.put(OutscalePriceImport.CONF_REGIONS, "(sfo1|sfo2|nyc1|sgp1)");
-		configuration.put(OutscalePriceImport.CONF_ITYPE, "(m6-|s-).*");
-		configuration.put(OutscalePriceImport.CONF_OS, "(WINDOWS|LINUX|CENTOS)");
+		configuration.put(OutscalePriceImport.CONF_REGIONS, "(eu-.*|cloudgouv.*|cn-.*)");
+		configuration.put(OutscalePriceImport.CONF_ITYPE, ".*(v5).*");
+		configuration.put(OutscalePriceImport.CONF_OS, "(WINDOWS|LINUX)");
 
 		final var quote = installAndConfigure();
 		Assertions.assertTrue(quote.getCost().getMin() >= 15);
@@ -405,22 +381,47 @@ class ProvOutscalePriceImportTest extends AbstractServerTest {
 		em.clear();
 		Assertions.assertEquals(0, provResource.getConfiguration(subscription).getCost().getMin(), DELTA);
 
+		em.createQuery(
+				"FROM ProvInstancePrice WHERE os=:os"
+				+ " AND tenancy=:tenancy"
+				+ " AND license=:license"
+				+ " AND term.code=:term "
+				+ " AND location.name=:location"
+				+ " AND type.code=:instanceType")
+				.setParameter("tenancy", ProvTenancy.SHARED)
+				.setParameter("license", "BYOL")
+				.setParameter("term", "On-demand")
+				.setParameter("instanceType", "tinav1.cXrY.high")
+				.setParameter("os", VmOs.WINDOWS)
+				.setParameter("location", "eu-west-2").getResultList();
+
 		// Request an instance for a specific OS
 		var lookup = qiResource.lookup(subscription,
-				builder().cpu(8).ram(256000).constant(true).os(VmOs.CENTOS).location("sfo2").usage("36month").build());
-		Assertions.assertEquals("sfo2/monthly/centos/m6-32vcpu-256gb", lookup.getPrice().getCode());
+				builder().cpu(8).ram(256000).os(VmOs.LINUX).location("eu-west-2").usage("36month").build());
+		Assertions.assertEquals("eu-west-2/ri - 3 y/linux/tinav1.cxry.medium/shared", lookup.getPrice().getCode());
+		Assertions.assertFalse(lookup.getPrice().getType().getConstant());
 
 		// Request an instance for a generic Linux OS
 		lookup = qiResource.lookup(subscription,
-				builder().constant(true).type("s-1vcpu-1gb").os(VmOs.LINUX).location("sfo2").usage("36month").build());
-		Assertions.assertEquals("sfo2/monthly/centos/s-1vcpu-1gb", lookup.getPrice().getCode());
+				builder().constant(true).type("tinav1.cXrY.high").os(VmOs.LINUX).build());
+		Assertions.assertEquals("eu-west-2/ri - 1 m/linux/tinav1.cxry.high/shared", lookup.getPrice().getCode());
 		Assertions.assertFalse(lookup.getPrice().getType().isAutoScale());
+		Assertions.assertEquals(Rate.LOW,lookup.getPrice().getType().getCpuRate());
+		Assertions.assertTrue(lookup.getPrice().getType().getConstant());
 
-		// New instance for "s-1vcpu-1gb"
+		// Request for BYOL VDA
+		lookup = qiResource.lookup(subscription,
+				builder().constant(true).type("tinav1.cXrY.high").cpu(1).os(VmOs.WINDOWS).license("BYOL").build());
+		Assertions.assertEquals("eu-west-2/ri - 1 m/windows/tinav1.cxry.high/shared/byol", lookup.getPrice().getCode());
+		Assertions.assertFalse(lookup.getPrice().getType().isAutoScale());
+		Assertions.assertEquals(Rate.LOW,lookup.getPrice().getType().getCpuRate());
+		Assertions.assertTrue(lookup.getPrice().getType().getConstant());
+
+		// New instance WINDOWS with SQL Server
 		var ivo = new QuoteInstanceEditionVo();
 		ivo.setCpu(1d);
 		ivo.setRam(1);
-		ivo.setLocation("sfo2");
+		ivo.setLocation("eu-west-2");
 		ivo.setPrice(lookup.getPrice().getId());
 		ivo.setName("server1");
 		ivo.setMaxQuantity(2);
@@ -445,13 +446,13 @@ class ProvOutscalePriceImportTest extends AbstractServerTest {
 		// Lookup STANDARD SSD storage within the same region than the attached server
 		// ---------------------------------
 		var sLookup = qsResource.lookup(subscription, QuoteStorageQuery.builder().size(5).latency(Rate.LOW)
-				.location("sfo2").instance(createInstance.getId()).build()).get(0);
+				.location("eu-west-2").instance(createInstance.getId()).build()).get(0);
 		Assertions.assertEquals(0.5, sLookup.getCost(), DELTA);
 		var price = sLookup.getPrice();
-		Assertions.assertEquals("sfo2/do-block-storage-standard", price.getCode());
+		Assertions.assertEquals("eu-west-2/do-block-storage-standard", price.getCode());
 		var type = price.getType();
 		Assertions.assertEquals("do-block-storage-standard", type.getCode());
-		Assertions.assertEquals("sfo2", price.getLocation().getName());
+		Assertions.assertEquals("eu-west-2", price.getLocation().getName());
 		Assertions.assertEquals("San Francisco 2", price.getLocation().getDescription());
 
 		// New storage attached to the created instance
