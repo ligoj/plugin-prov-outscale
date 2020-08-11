@@ -12,7 +12,6 @@ import javax.ws.rs.core.MediaType;
 import org.ligoj.app.plugin.prov.AbstractProvResource;
 import org.ligoj.app.plugin.prov.ProvResource;
 import org.ligoj.app.plugin.prov.catalog.ImportCatalogService;
-import org.ligoj.app.plugin.prov.model.VmOs;
 import org.ligoj.app.plugin.prov.outscale.catalog.OutscalePriceImport;
 import org.ligoj.bootstrap.resource.system.configuration.ConfigurationResource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,21 +40,6 @@ public class ProvOutscalePluginResource extends AbstractProvResource implements 
 	 */
 	public static final String KEY = SERVICE_URL.replace('/', ':').substring(1);
 
-	/**
-	 * Default management URL end-point.
-	 */
-	private static final String DEFAULT_API_URL = "https://outscale.ligoj.io";
-
-	/**
-	 * API Management URL.
-	 */
-	protected static final String CONF_API_URL = PLUGIN_KEY + ":api";
-
-	/**
-	 * A valid API key. Would be used to retrieve a access token.
-	 */
-	public static final String PARAMETER_TOKEN = PLUGIN_KEY + ":access-token";
-
 	@Autowired
 	protected OutscalePriceImport priceImport;
 
@@ -71,15 +55,6 @@ public class ProvOutscalePluginResource extends AbstractProvResource implements 
 	public String getVersion(final Map<String, String> parameters) {
 		// Use API version as product version
 		return "2";
-	}
-
-	/**
-	 * Return the management URL.
-	 *
-	 * @return The management URL.
-	 */
-	protected String getApiUrl() {
-		return configuration.get(CONF_API_URL, DEFAULT_API_URL);
 	}
 
 	@Override
@@ -106,10 +81,5 @@ public class ProvOutscalePluginResource extends AbstractProvResource implements 
 	@Override
 	public void create(final int subscription) {
 		// Authenticate only for the check
-	}
-
-	@Override
-	public VmOs getCatalogOs(final VmOs os) {
-		return os == VmOs.LINUX ? VmOs.CENTOS : os;
 	}
 }

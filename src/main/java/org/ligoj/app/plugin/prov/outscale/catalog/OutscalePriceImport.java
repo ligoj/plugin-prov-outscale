@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -96,8 +97,7 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 	 */
 	public static final String CONF_OS = ProvOutscalePluginResource.KEY + ":os";
 
-	private static final Pattern SQL_SERVER_PATTERN = Pattern.compile(".*(SQL Server[^(]*).*");
-	private static final Pattern BYOL_PATTERN = Pattern.compile(".*VDA.*");
+	private static final Pattern SQL_SERVER_PATTERN = Pattern.compile(".*(SQL Server.*)\\s+Edition.*");
 	private static final Pattern TERM_PATTERN = Pattern.compile(".*_([hmy][^_]+ly).*");
 	private static final Pattern MIN_CPU_PATTERN = Pattern.compile(".*\\s+([0-9]+)\\s+c[^\\s]+\\s+min.*");
 	private static final Pattern INCR_CPU_PATTERN = Pattern.compile(".*_([0-9]+)cores.*");
@@ -113,7 +113,7 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 
 	@Override
 	protected int getWorkload(final ImportCatalogStatus status) {
-		return 6; // init + get catalog + vm + db + support+storage
+		return 5; // init + get catalog + vm + support+storage
 	}
 
 	/**
@@ -203,16 +203,16 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 		getLicenses(context).forEach(p -> {
 			p.setOs(licenseToVmOs(p.getCode()));
 			p.setSoftware(licenseToSoftware(p.getName()));
-			p.setByol(licenseToByol(p.getName()));
 			p.setBillingPeriod(licenseToBillingPeriod(p.getCode()));
 			p.setMinCpu(licenseToMinCpu(p.getName()));
 			p.setIncrementCpu(licenseToIncrementCpu(p.getCode()));
 			p.setBillingPeriods(new ArrayList<>());
 		});
 		getLicenses(context).forEach(p -> {
-			getLicenses(context).filter(p2 -> p2.getOs() == p.getOs()
-					&& Objects.equals(p2.getSoftware(), p.getSoftware()) && Objects.equals(p2.getByol(), p.getByol())
-					&& p2.getBillingPeriod() != p.getBillingPeriod()).forEach(p2 -> {
+			getLicenses(context)
+					.filter(p2 -> p2.getOs() == p.getOs() && Objects.equals(p2.getSoftware(), p.getSoftware())
+							&& p2.getBillingPeriod() != p.getBillingPeriod())
+					.forEach(p2 -> {
 						p2.setCode(null); // Ignore this price for the next process
 						p.getBillingPeriods().add(p2); // Merge this price into the root price
 					});
@@ -237,6 +237,7 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 			t.setLatency(Rate.GOOD);
 			t.setIops(400);
 			t.setThroughput(40);
+			t.setInstanceType("%");
 		});
 
 		// Performance
@@ -246,6 +247,7 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 			t.setOptimized(ProvStorageOptimized.IOPS);
 			t.setIops(10000);
 			t.setThroughput(160);
+			t.setInstanceType("%");
 		});
 
 		// Enterprise
@@ -255,6 +257,7 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 			t.setOptimized(ProvStorageOptimized.IOPS);
 			t.setIops(10000);
 			t.setThroughput(200);
+			t.setInstanceType("%");
 			t.setMinimal(4d);
 		});
 
@@ -266,7 +269,6 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 			t.setOptimized(ProvStorageOptimized.DURABILITY);
 			t.setIncrement(null);
 			t.setAvailability(99d);
-			t.setInstanceType(null);
 			t.setMaximal(null);
 		});
 
@@ -280,7 +282,6 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 			t.setOptimized(ProvStorageOptimized.DURABILITY);
 			t.setIncrement(null);
 			t.setAvailability(99d);
-			t.setInstanceType(null);
 			t.setMinimal(0d);
 			t.setMaximal(null);
 		});
@@ -295,7 +296,6 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 			t.setOptimized(ProvStorageOptimized.DURABILITY);
 			t.setIncrement(null);
 			t.setAvailability(99d);
-			t.setInstanceType(null);
 			t.setMinimal(0d);
 			t.setMaximal(null);
 		});
@@ -320,7 +320,6 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 			t.setName(code /* human readable name */);
 			t.setIncrement(null);
 			t.setAvailability(99d);
-			t.setInstanceType("%");
 			t.setMaximal(14901d);
 			t.setMinimal(1d);
 			aType.accept(t);
@@ -400,7 +399,8 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 
 	private Stream<CsvPrice> getLicenses(final UpdateContext context) {
 		return context.getCsvPrices().getOrDefault("Licences", Collections.emptyMap()).entrySet().stream()
-				.flatMap(e -> e.getValue().stream()).filter(p -> p.getCode() != null);
+				.flatMap(e -> e.getValue().stream().filter(l -> !l.getType().equals("Windows 10")))
+				.filter(p -> p.getCode() != null);
 	}
 
 	private Stream<CsvPrice> getPrices(final UpdateContext context, final String service, final String type) {
@@ -424,9 +424,6 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 	 * Return the OS from the license.
 	 */
 	protected VmOs licenseToVmOs(final String licence) {
-		if (licence.contains("windows") || licence.contains("mssql")) {
-			return VmOs.WINDOWS;
-		}
 		if (licence.contains("oracle")) {
 			return VmOs.ORACLE;
 		}
@@ -434,8 +431,8 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 			return VmOs.RHEL;
 		}
 
-		// Fallback to Linux
-		return VmOs.LINUX;
+		// Fallback to Windows
+		return VmOs.WINDOWS;
 	}
 
 	/**
@@ -444,18 +441,8 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 	protected String licenseToSoftware(final String licence) {
 		final var matches = SQL_SERVER_PATTERN.matcher(licence);
 		if (matches.find()) {
-			return matches.group(1).trim();
-		}
-		return null;
-	}
-
-	/**
-	 * Indicate the license is associated to BYOL
-	 */
-	protected String licenseToByol(final String licence) {
-		final var matches = BYOL_PATTERN.matcher(licence);
-		if (matches.find()) {
-			return ProvInstancePrice.LICENSE_BYOL;
+			// Clean the software name
+			return matches.group(1).toUpperCase(Locale.ENGLISH).replace("STD", "STANDARD").trim();
 		}
 		return null;
 	}
@@ -498,7 +485,7 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 
 	private void installStoragePrices(final UpdateContext context, final CsvPrice price, final ProvLocation region,
 			final Double costGb) {
-		final var typeParts = price.getName().split("_");
+		final var typeParts = price.getCode().split("_");
 		final var last = typeParts[typeParts.length - 1];
 		final var service = price.getService().toLowerCase();
 		List.of(last, service + "-" + last, service + "-" + last.replace("std", "standard")).stream()
@@ -559,7 +546,7 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 						osCpuCost = osCost / osPrice.getIncrementCpu();
 					}
 
-					// Install Compute+OS prices
+					// Install compute+OS prices
 					installInstancePrice(context, region, term, type, osVmCost, tCpuCost + osCpuCost, tRamCost,
 							ProvTenancy.SHARED, osPrice);
 					installInstancePrice(context, region, term, type, osVmCost, dtCpuCost + osCpuCost, dtRamCost,
@@ -571,20 +558,10 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 									c -> s.equals(c.getSoftware()), osPrice.getOs(), region, csvTerm))
 							.filter(Objects::nonNull).forEach(sPrice -> {
 								final var sCost = getCost(sPrice, region, csvTerm);
-								final double sCpuCost;
-								final double sVmCost;
-								if (sPrice.getIncrementCpu() == null) {
-									// Per VM pricing
-									sVmCost = sCost;
-									sCpuCost = 0d;
-								} else {
-									// Per core pricing
-									sVmCost = 0d;
-									sCpuCost = sCost / sPrice.getIncrementCpu();
-								}
-								installInstancePrice(context, region, term, type, osVmCost + sVmCost,
+								final var sCpuCost = sCost / sPrice.getIncrementCpu();
+								installInstancePrice(context, region, term, type, osVmCost,
 										tCpuCost + osCpuCost + sCpuCost, tRamCost, ProvTenancy.SHARED, sPrice);
-								installInstancePrice(context, region, term, type, osVmCost + sVmCost,
+								installInstancePrice(context, region, term, type, osVmCost,
 										dtCpuCost + osCpuCost + sCpuCost, dtRamCost, ProvTenancy.DEDICATED, sPrice);
 							});
 				});
@@ -612,21 +589,25 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 	private void installInstancePrice(final UpdateContext context, final ProvLocation region,
 			final ProvInstancePriceTerm term, final ProvInstanceType type, final Double monthlyCost,
 			final Double cpuCost, final Double ramCost, final ProvTenancy tenancy, final CsvPrice csvpPrice) {
+		// Build the code string
 		final var os = csvpPrice.getOs();
 		final var codeParts = new ArrayList<String>(
-				List.of(region.getName(), term.getCode(), os.name(), type.getCode(), tenancy.name()));
-		if (csvpPrice.getByol() != null) {
-			codeParts.add(ProvInstancePrice.LICENSE_BYOL);
+				List.of(region.getName(), term.getCode(), os.name(), type.getCode()));
+		if (tenancy != ProvTenancy.SHARED) {
+			codeParts.add(tenancy.name());
 		}
 		if (csvpPrice.getSoftware() != null) {
 			codeParts.add(csvpPrice.getSoftware());
 		}
+
 		final var price = context.getPrevious().computeIfAbsent(String.join("/", codeParts).toLowerCase(), code -> {
 			// New instance price (not update mode)
 			final var newPrice = new ProvInstancePrice();
 			newPrice.setCode(code);
 			return newPrice;
 		});
+
+		// Save the price as needed
 		copyAsNeeded(context, price, p -> {
 			p.setLocation(region);
 			p.setOs(os);
@@ -634,10 +615,9 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 			p.setTenancy(tenancy);
 			p.setType(type);
 			p.setIncrementCpu(Objects.requireNonNullElse(csvpPrice.getIncrementCpu(), 1d));
-			p.setMinCpu(Objects.requireNonNullElse(price.getMinCpu(), 1d));
+			p.setMinCpu((double) csvpPrice.getMinCpu());
 			p.setPeriod(term.getPeriod());
-			p.setSoftware(price.getSoftware());
-			p.setLicense(price.getLicense());
+			p.setSoftware(csvpPrice.getSoftware());
 		});
 
 		// Update the cost
@@ -646,7 +626,7 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 			price.setCostCpu(cR);
 			price.setCostRam(round3Decimals(ramCost));
 			price.setCost(round3Decimals(monthlyCost));
-			price.setCostPeriod(round3Decimals(monthlyCost * Math.max(1, price.getTerm().getPeriod())));
+			price.setCostPeriod(round3Decimals(monthlyCost * Math.max(1, term.getPeriod())));
 		}, ipRepository::save);
 	}
 
@@ -661,7 +641,8 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 		}
 		final var gen = Integer.parseInt(matcher.group(1), 10);
 		final var opt = matcher.group(2);
-		final var code = "tinav" + gen + ".cXrY." + opt;
+		final var name = "tinav" + gen + ".cXrY." + opt;
+		final var code = name.toLowerCase(Locale.ENGLISH);
 
 		// Only enabled types
 		if (!isEnabledType(context, code)) {
@@ -678,7 +659,7 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 
 		// Merge as needed
 		return copyAsNeeded(context, type, t -> {
-			t.setName(code);
+			t.setName(name);
 			t.setCpu(0d); // Dynamic
 			t.setRam(0); // Dynamic
 			t.setDescription(aType.getName());
@@ -725,7 +706,8 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 	/**
 	 * Install a new price term as needed and complete the specifications.
 	 */
-	protected ProvInstancePriceTerm installPriceTerm(final UpdateContext context, final String code, final int period) {
+	protected ProvInstancePriceTerm installPriceTerm(final UpdateContext context, final String name, final int period) {
+		final var code = name.toLowerCase(Locale.ENGLISH).replace(" ", "");
 		final var term = context.getPriceTerms().computeIfAbsent(code, t -> {
 			final var newTerm = new ProvInstancePriceTerm();
 			newTerm.setNode(context.getNode());
@@ -735,9 +717,9 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 
 		// Complete the specifications
 		return copyAsNeeded(context, term, t -> {
-			t.setName(code /* human readable name */);
+			t.setName(name);
 			t.setPeriod(period);
-			t.setReservation(code.startsWith("RI"));
+			t.setReservation(code.startsWith("ri"));
 			t.setConvertibleFamily(false);
 			t.setConvertibleType(false);
 			t.setConvertibleLocation(false);
@@ -778,7 +760,6 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 		});
 
 		// Merge the support type details
-		type.setDescription(aType.getDescription());
 		type.setAccessApi(aType.getAccessApi());
 		type.setAccessChat(aType.getAccessChat());
 		type.setAccessEmail(aType.getAccessEmail());

@@ -6,7 +6,6 @@ package org.ligoj.app.plugin.prov.outscale.catalog;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.Reader;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -69,18 +68,6 @@ public class CsvForBeanOutscale extends AbstractCsvManager {
 
 	private boolean isValidRaw(final List<String> rawValues) {
 		return rawValues.size() >= 7;
-	}
-
-	/**
-	 * Do not use this, method.
-	 *
-	 * @deprecated Use #read() instead
-	 */
-	@Override
-	@Deprecated(forRemoval = false)
-	public final <B> List<B> toBean(final Class<B> beanType, final Reader input) {
-		// Disable this method
-		return Collections.emptyList();
 	}
 
 	/**
