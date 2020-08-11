@@ -425,7 +425,7 @@ class ProvOutscalePriceImportTest extends AbstractServerTest {
 		svo.setSize(100);
 		svo.setName("storage1");
 		svo.setSubscription(subscription);
-		svo.setQuoteInstance(createInstance.getId());
+		svo.setInstance(createInstance.getId());
 		svo.setType(sLookup.getPrice().getType().getCode());
 		var createStorage = qsResource.create(svo);
 		Assertions.assertTrue(createStorage.getTotal().getMin() > 1);
