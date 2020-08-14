@@ -1,4 +1,4 @@
-# :link: Ligoj Outscale plugin [![Maven Central](https://maven-badges.herokuapp.com/maven-central/org.ligoj.plugin/plugin-prov-outscale/badge.svg)](https://maven-badges.herokuapp.com/maven-central/org.ligoj.plugin/plugin-prov-outscale) [![Download](https://api.bintray.com/packages/ligoj/maven-repo/plugin-prov-outscale/images/download.svg) ](https://bintray.com/ligoj/maven-repo/plugin-prov-outscale/_latestVersion)
+# :link: Ligoj Outscale plugin [![Maven Central](https://maven-badges.herokuapp.com/maven-central/org.ligoj.plugin/plugin-prov-outscale/badge.svg)](https://maven-badges.herokuapp.com/maven-central/org.ligoj.plugin/plugin-prov-outscale)
 
 [![Build Status](https://travis-ci.org/ligoj/plugin-prov-outscale.svg?branch=master)](https://travis-ci.org/ligoj/plugin-prov-outscale)
 [![Build Status](https://circleci.com/gh/ligoj/plugin-prov-outscale.svg?style=svg)](https://circleci.com/gh/ligoj/plugin-prov-outscale)
