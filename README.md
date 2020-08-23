@@ -5,7 +5,7 @@
 [![Build Status](https://ci.appveyor.com/api/projects/status/u19srr49o29kq46l?svg=true)](https://ci.appveyor.com/project/ligoj/plugin-prov-outscale/branch/master)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=org.ligoj.plugin%3Aplugin-prov-outscale&metric=coverage)](https://sonarcloud.io/dashboard?id=org.ligoj.plugin%3Aplugin-prov-outscale)
 [![Quality Gate](https://sonarcloud.io/api/project_badges/measure?metric=alert_status&project=org.ligoj.plugin:plugin-prov-outscale)](https://sonarcloud.io/dashboard/index/org.ligoj.plugin:plugin-prov-outscale)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/996890fa2ed64d8980e91e18e0a92114)](https://www.codacy.com/app/ligoj/plugin-prov-outscale?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=ligoj/plugin-prov-outscale&amp;utm_campaign=Badge_Grade)
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/63f8621e27d243a1b267e1011add7475)](https://www.codacy.com/app/ligoj/plugin-prov-outscale?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=ligoj/plugin-prov-outscale&amp;utm_campaign=Badge_Grade)
 [![CodeFactor](https://www.codefactor.io/repository/github/ligoj/plugin-prov-outscale/badge)](https://www.codefactor.io/repository/github/ligoj/plugin-prov-outscale)
 [![License](http://img.shields.io/:license-mit-blue.svg)](http://fabdouglas.mit-license.org/)
 
