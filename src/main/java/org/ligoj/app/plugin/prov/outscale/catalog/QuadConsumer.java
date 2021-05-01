@@ -15,7 +15,7 @@ public interface QuadConsumer<K, V, S, T> {
 
 	/**
 	 * Performs the operation given the specified arguments.
-	 * 
+	 *
 	 * @param k the first input argument
 	 * @param v the second input argument
 	 * @param s the third input argument

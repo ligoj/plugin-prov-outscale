@@ -75,7 +75,7 @@ class ProvOutscalePluginResourceTest extends AbstractServerTest {
 
 	@Test
 	void install() throws Exception {
-		final ProvOutscalePluginResource resource2 = new ProvOutscalePluginResource();
+		final var resource2 = new ProvOutscalePluginResource();
 		resource2.priceImport = Mockito.mock(OutscalePriceImport.class);
 		resource2.install();
 	}

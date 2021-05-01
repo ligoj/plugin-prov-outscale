@@ -12,7 +12,7 @@ import org.ligoj.bootstrap.core.csv.CsvReader;
 
 /**
  * Read CSV reader skipping the useless rows.
- * 
+ *
  * @param <T> Target bean type.
  */
 public abstract class AbstractOutscaleCsvReader<T> extends CsvBeanReader<T> {
@@ -46,7 +46,7 @@ public abstract class AbstractOutscaleCsvReader<T> extends CsvBeanReader<T> {
 			// EOF
 			return null;
 		}
-		for (int i = 0; i < rawValues.size(); i++) {
+		for (var i = 0; i < rawValues.size(); i++) {
 
 			// Drop "?" prices
 			if ("?".equals(rawValues.get(i))) {

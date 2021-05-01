@@ -29,7 +29,7 @@ public class UpdateContext extends AbstractUpdateContext {
 	 * Cost RAM.
 	 */
 	private CsvPrice costRam;
-	
+
 	/**
 	 * Dedicated tenancy cost.
 	 */

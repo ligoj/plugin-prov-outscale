@@ -51,7 +51,7 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * The provisioning price service for Digital Ocean. Manage install or update of prices.<br>
- * 
+ *
  * @see <a href="hhttps://en.outscale.com/pricing/">Pricing details</a>
  * @see <a href="hhttps://en.outscale.com/pricing/how-pricing-works/">Pricing computation</a>
  * @see <a href="https://wiki.outscale.net/display/EN/Getting+the+Price+of+Your+Instances">Reservation</a>
@@ -60,7 +60,7 @@ import lombok.extern.slf4j.Slf4j;
  * @see <a href="https://wiki.outscale.net/pages/viewpage.action?pageId=43066330">Instance Types</a>
  * @see <a href="https://wiki.outscale.net/display/EN/About+Volumes">Volumes</a>
  * @see <a href="https://wiki.outscale.net/display/FR/Types+d'instances">Instance types</a>
- * 
+ *
  */
 @Component
 @Setter
@@ -123,7 +123,7 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 	 * @throws IOException When CSV or XML files cannot be read.
 	 */
 	public void install(final boolean force) throws IOException, URISyntaxException {
-		final UpdateContext context = initContext(new UpdateContext(), ProvOutscalePluginResource.KEY, force);
+		final var context = initContext(new UpdateContext(), ProvOutscalePluginResource.KEY, force);
 		final var node = context.getNode();
 
 		// Get previous data
@@ -226,7 +226,7 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 
 	/**
 	 * Install the storage types and prices.
-	 * 
+	 *
 	 * @see <a href="https://wiki.outscale.net/display/EN/About+Volumes">Volume types</a>
 	 */
 	private void installStorage(final UpdateContext context) {
@@ -731,7 +731,7 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 	public void installSupportPrice(final UpdateContext context, final String code, final ProvSupportPrice aPrice) {
 		final var price = context.getPreviousSupport().computeIfAbsent(code, c -> {
 			// New instance price
-			final ProvSupportPrice newPrice = new ProvSupportPrice();
+			final var newPrice = new ProvSupportPrice();
 			newPrice.setCode(c);
 			return newPrice;
 		});
