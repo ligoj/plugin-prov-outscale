@@ -127,7 +127,7 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 		final var node = context.getNode();
 
 		// Get previous data
-		nextStep(node, "initialize");
+		nextStep(context, "initialize");
 		context.setValidOs(Pattern.compile(configuration.get(CONF_OS, ".*"), Pattern.CASE_INSENSITIVE));
 		context.setValidInstanceType(Pattern.compile(configuration.get(CONF_ITYPE, ".*"), Pattern.CASE_INSENSITIVE));
 		context.setValidRegion(Pattern.compile(configuration.get(CONF_REGIONS, ".*")));
@@ -165,19 +165,19 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 		context.setCsvTerms(terms);
 
 		// Fetch the remote prices stream and build the price objects
-		nextStep(node, "retrieve-catalog");
+		nextStep(context, "retrieve-catalog");
 		buildModel(context, StringUtils.removeEnd(getPricesApi(), "/") + "/prices/outscale-prices.csv");
 
 		// Instances
-		nextStep(node, "install-instances");
+		nextStep(context, "install-instances");
 		installInstances(context);
 
 		// Storages
-		nextStep(node, "install-storages");
+		nextStep(context, "install-storages");
 		installStorage(context);
 
 		// Support
-		nextStep(node, "install-support");
+		nextStep(context, "install-support");
 		csvForBean.toBean(ProvSupportType.class, PREFIX + "/prov-support-type.csv").forEach(t -> {
 			installSupportType(context, t.getCode(), t);
 		});
