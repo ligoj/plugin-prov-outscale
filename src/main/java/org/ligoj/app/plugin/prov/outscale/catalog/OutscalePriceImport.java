@@ -131,7 +131,7 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 		context.setValidOs(Pattern.compile(configuration.get(CONF_OS, ".*"), Pattern.CASE_INSENSITIVE));
 		context.setValidInstanceType(Pattern.compile(configuration.get(CONF_ITYPE, ".*"), Pattern.CASE_INSENSITIVE));
 		context.setValidRegion(Pattern.compile(configuration.get(CONF_REGIONS, ".*")));
-		context.getMapRegionToName().putAll(toMap("outscale/regions.json", MAP_LOCATION));
+		context.getMapRegionById().putAll(toMap("outscale/regions.json", MAP_LOCATION));
 		context.setInstanceTypes(itRepository.findAllBy(BY_NODE, node).stream()
 				.collect(Collectors.toMap(ProvInstanceType::getCode, Function.identity())));
 		context.setPriceTerms(iptRepository.findAllBy(BY_NODE, node).stream()
@@ -621,7 +621,6 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 		});
 
 		// Update the cost
-		context.getPrices().add(price.getCode());
 		saveAsNeeded(context, price, Objects.requireNonNullElse(price.getCostCpu(), 0d), cpuCost, (cR, c) -> {
 			price.setCostCpu(cR);
 			price.setCostRam(round3Decimals(ramCost));
