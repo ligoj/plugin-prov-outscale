@@ -74,6 +74,11 @@ class ProvOutscalePluginResourceTest extends AbstractServerTest {
 	}
 
 	@Test
+	void getName() {
+		Assertions.assertEquals("3DS Outscale", resource.getName());
+	}
+
+	@Test
 	void install() throws Exception {
 		final var resource2 = new ProvOutscalePluginResource();
 		resource2.priceImport = Mockito.mock(OutscalePriceImport.class);

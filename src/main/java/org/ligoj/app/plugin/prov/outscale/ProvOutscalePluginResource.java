@@ -82,4 +82,9 @@ public class ProvOutscalePluginResource extends AbstractProvResource implements 
 	public void create(final int subscription) {
 		// Authenticate only for the check
 	}
+
+	@Override
+	public String getName() {
+		return "3DS Outscale";
+	}
 }
