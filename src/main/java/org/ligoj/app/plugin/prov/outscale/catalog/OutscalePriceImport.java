@@ -580,7 +580,7 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 		final var billingPeriods = BillingPeriod.values();
 		final var licenses = getLicenses(context).filter(l -> l.getOs() == os).filter(filter)
 				.filter(l -> l.getRegions().containsKey(region.getName())).flatMap(l -> l.getBillingPeriods().stream())
-				.collect(Collectors.toList());
+				.toList();
 		return Arrays.stream(BillingPeriod.values())
 				.skip(ArrayUtils.indexOf(billingPeriods, csvTerm.getBillingPeriod()))
 				.flatMap(b -> licenses.stream().filter(l -> l.getBillingPeriod() == b)).findFirst().orElse(null);
