@@ -591,7 +591,7 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 			final Double cpuCost, final Double ramCost, final ProvTenancy tenancy, final CsvPrice csvpPrice) {
 		// Build the code string
 		final var os = csvpPrice.getOs();
-		final var codeParts = new ArrayList<String>(
+		final var codeParts = new ArrayList<>(
 				List.of(region.getName(), term.getCode(), os.name(), type.getCode()));
 		if (tenancy != ProvTenancy.SHARED) {
 			codeParts.add(tenancy.name());
