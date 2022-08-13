@@ -591,8 +591,7 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 			final Double cpuCost, final Double ramCost, final ProvTenancy tenancy, final CsvPrice csvpPrice) {
 		// Build the code string
 		final var os = csvpPrice.getOs();
-		final var codeParts = new ArrayList<>(
-				List.of(region.getName(), term.getCode(), os.name(), type.getCode()));
+		final var codeParts = new ArrayList<>(List.of(region.getName(), term.getCode(), os.name(), type.getCode()));
 		if (tenancy != ProvTenancy.SHARED) {
 			codeParts.add(tenancy.name());
 		}
@@ -662,7 +661,7 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 			t.setCpu(0d); // Dynamic
 			t.setRam(0); // Dynamic
 			t.setDescription(aType.getName());
-			t.setConstant(!"medium".equals(opt));
+			t.setBaseline("medium".equals(opt) ? 20d : 100d);
 			t.setAutoScale(false);
 
 			// See
