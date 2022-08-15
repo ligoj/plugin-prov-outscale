@@ -155,9 +155,8 @@ class ProvOutscalePriceImportTest extends AbstractServerTest {
 		this.resource.getImportCatalogResource().endTask("service:prov:outscale", false);
 		this.resource.getImportCatalogResource().startTask("service:prov:outscale", t -> {
 			t.setLocation(null);
-			t.setNbInstancePrices(null);
-			t.setNbInstanceTypes(null);
-			t.setNbStorageTypes(null);
+			t.setNbPrices(0);
+			t.setNbTypes(null);
 			t.setWorkload(0);
 			t.setDone(0);
 			t.setPhase(null);
@@ -246,10 +245,9 @@ class ProvOutscalePriceImportTest extends AbstractServerTest {
 		Assertions.assertEquals(5, status.getWorkload());
 		Assertions.assertEquals("install-support", status.getPhase());
 		Assertions.assertEquals(DEFAULT_USER, status.getAuthor());
-		Assertions.assertTrue(status.getNbInstancePrices().intValue() >= 100);
-		Assertions.assertTrue(status.getNbInstanceTypes().intValue() >= 15);
+		Assertions.assertTrue(status.getNbPrices().intValue() >= 100);
+		Assertions.assertTrue(status.getNbTypes().intValue() >= 15);
 		Assertions.assertTrue(status.getNbLocations() >= 1);
-		Assertions.assertTrue(status.getNbStorageTypes().intValue() >= 3);
 	}
 
 	private void mockServer() throws IOException {
