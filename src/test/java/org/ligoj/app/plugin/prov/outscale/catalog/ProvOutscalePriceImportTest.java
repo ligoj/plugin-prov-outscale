@@ -13,12 +13,12 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.StandardCharsets;
 
-import javax.annotation.PostConstruct;
-import javax.transaction.Transactional;
+import jakarta.annotation.PostConstruct;
+import jakarta.transaction.Transactional;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.reflect.MethodUtils;
-import org.apache.http.HttpStatus;
+import org.apache.hc.core5.http.HttpStatus;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -102,8 +102,8 @@ class ProvOutscalePriceImportTest extends AbstractServerTest {
 				new Class[] { Node.class, Project.class, CacheCompany.class, CacheUser.class, DelegateNode.class,
 						Parameter.class, ProvLocation.class, Subscription.class, ParameterValue.class,
 						ProvQuote.class },
-				StandardCharsets.UTF_8.name());
-		this.subscription = getSubscription("gStack");
+				StandardCharsets.UTF_8);
+		this.subscription = getSubscription("Jupiter");
 
 		// Mock catalog import helper
 		final var helper = new ImportCatalogResource();
@@ -164,7 +164,7 @@ class ProvOutscalePriceImportTest extends AbstractServerTest {
 	}
 
 	@Test
-	void installOffLineKoPrices() throws Exception {
+	void installOffLineKoPrices() {
 		configuration.put(OutscalePriceImport.CONF_API_PRICES, "http://localhost:" + MOCK_PORT);
 		httpServer.start();
 		Assertions.assertThrows(FileNotFoundException.class, () -> resource.install(false));
@@ -245,8 +245,8 @@ class ProvOutscalePriceImportTest extends AbstractServerTest {
 		Assertions.assertEquals(5, status.getWorkload());
 		Assertions.assertEquals("install-support", status.getPhase());
 		Assertions.assertEquals(DEFAULT_USER, status.getAuthor());
-		Assertions.assertTrue(status.getNbPrices().intValue() >= 100);
-		Assertions.assertTrue(status.getNbTypes().intValue() >= 15);
+		Assertions.assertTrue(status.getNbPrices() >= 100);
+		Assertions.assertTrue(status.getNbTypes() >= 15);
 		Assertions.assertTrue(status.getNbLocations() >= 1);
 	}
 
@@ -254,12 +254,12 @@ class ProvOutscalePriceImportTest extends AbstractServerTest {
 		configuration.put(OutscalePriceImport.CONF_API_PRICES, "http://localhost:" + MOCK_PORT);
 		httpServer.stubFor(get(urlEqualTo("/prices/outscale-prices.csv"))
 				.willReturn(aResponse().withStatus(HttpStatus.SC_OK).withBody(IOUtils.toString(
-						new ClassPathResource("mock-server/outscale/outscale-prices.csv").getInputStream(), "UTF-8"))));
+						new ClassPathResource("mock-server/outscale/outscale-prices.csv").getInputStream(), StandardCharsets.UTF_8))));
 		httpServer.stubFor(
 				get(urlEqualTo("/v2/prices/outscale-prices.csv")).willReturn(aResponse().withStatus(HttpStatus.SC_OK)
 						.withBody(IOUtils.toString(
 								new ClassPathResource("mock-server/outscale/v2/outscale-prices.csv").getInputStream(),
-								"UTF-8"))));
+								StandardCharsets.UTF_8))));
 		httpServer.start();
 	}
 
@@ -339,7 +339,7 @@ class ProvOutscalePriceImportTest extends AbstractServerTest {
 	/**
 	 * Install and check
 	 */
-	private QuoteVo installAndConfigure(final boolean online) throws IOException, Exception {
+	private QuoteVo installAndConfigure(final boolean online) throws Exception {
 		configuration.put(OutscalePriceImport.CONF_REGIONS, "(eu-.*|cloudgouv.*|cn-.*)");
 		resource.install(false);
 		em.flush();

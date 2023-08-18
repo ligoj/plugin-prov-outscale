@@ -6,7 +6,7 @@ package org.ligoj.app.plugin.prov.outscale;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
-import javax.transaction.Transactional;
+import jakarta.transaction.Transactional;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -62,7 +62,7 @@ class ProvOutscalePluginResourceTest extends AbstractServerTest {
 						ParameterValue.class },
 				StandardCharsets.UTF_8.name());
 		configuration.put("service:prov:outscale:api", "http://localhost:" + MOCK_PORT + "/");
-		this.subscription = getSubscription("gStack");
+		this.subscription = getSubscription("Jupiter");
 
 		// Invalidate outscale cache
 		cacheManager.getCache("curl-tokens").clear();

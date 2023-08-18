@@ -5,9 +5,9 @@ package org.ligoj.app.plugin.prov.outscale;
 
 import java.util.Map;
 
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.MediaType;
 
 import org.ligoj.app.plugin.prov.AbstractProvResource;
 import org.ligoj.app.plugin.prov.ProvResource;
@@ -24,11 +24,6 @@ import org.springframework.stereotype.Service;
 @Path(ProvOutscalePluginResource.SERVICE_URL)
 @Produces(MediaType.APPLICATION_JSON)
 public class ProvOutscalePluginResource extends AbstractProvResource implements ImportCatalogService {
-
-	/**
-	 * Plug-in Key shortcut
-	 */
-	public static final String PLUGIN_KEY = "service:prov:outscale";
 
 	/**
 	 * Plug-in key.
