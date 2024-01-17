@@ -57,10 +57,10 @@ class ProvOutscalePluginResourceTest extends AbstractServerTest {
 	void prepareData() throws IOException {
 		persistSystemEntities();
 		persistEntities("csv",
-				new Class[] { Node.class, Project.class, CacheCompany.class, CacheUser.class, DelegateNode.class,
+				new Class<?>[] { Node.class, Project.class, CacheCompany.class, CacheUser.class, DelegateNode.class,
 						Subscription.class, ProvLocation.class, ProvQuote.class, Parameter.class,
 						ParameterValue.class },
-				StandardCharsets.UTF_8.name());
+				StandardCharsets.UTF_8);
 		configuration.put("service:prov:outscale:api", "http://localhost:" + MOCK_PORT + "/");
 		this.subscription = getSubscription("Jupiter");
 
@@ -99,13 +99,11 @@ class ProvOutscalePluginResourceTest extends AbstractServerTest {
 		initSpringSecurityContext("any");
 
 		// Re-Install a new configuration
-		Assertions.assertEquals("read-only-node", Assertions.assertThrows(BusinessException.class, () -> {
-			resource.updateCatalog("service:prov:outscale:test", false);
-		}).getMessage());
+		Assertions.assertEquals("read-only-node", Assertions.assertThrows(BusinessException.class, () -> resource.updateCatalog("service:prov:outscale:test", false)).getMessage());
 	}
 
 	@Test
-	void create() throws Exception {
+	void create() {
 		resource.create(subscription);
 	}
 
@@ -117,7 +115,7 @@ class ProvOutscalePluginResourceTest extends AbstractServerTest {
 	}
 
 	@Test
-	void checkStatus() throws Exception {
+	void checkStatus() {
 		Assertions.assertTrue(resource.checkStatus(subscriptionResource.getParametersNoCheck(subscription)));
 	}
 

@@ -99,7 +99,7 @@ class ProvOutscalePriceImportTest extends AbstractServerTest {
 	void prepareData() throws IOException {
 		persistSystemEntities();
 		persistEntities("csv",
-				new Class[] { Node.class, Project.class, CacheCompany.class, CacheUser.class, DelegateNode.class,
+				new Class<?>[] { Node.class, Project.class, CacheCompany.class, CacheUser.class, DelegateNode.class,
 						Parameter.class, ProvLocation.class, Subscription.class, ParameterValue.class,
 						ProvQuote.class },
 				StandardCharsets.UTF_8);
@@ -208,7 +208,7 @@ class ProvOutscalePriceImportTest extends AbstractServerTest {
 				.size());
 
 		final var lookupSu = qs2Resource
-				.lookup(subscription, 0, null, SupportType.ALL, SupportType.ALL, SupportType.ALL, Rate.BEST).get(0);
+				.lookup(subscription, 0, null, SupportType.ALL, SupportType.ALL, SupportType.ALL, Rate.BEST).getFirst();
 		assertLookup("outscale-excellence", lookupSu, 5000.0d);
 
 		// Install again to check the update without change
@@ -267,8 +267,8 @@ class ProvOutscalePriceImportTest extends AbstractServerTest {
 			final double instanceCost) {
 		Assertions.assertEquals(minCost, quote.getCost().getMin(), DELTA);
 		Assertions.assertEquals(maxCost, quote.getCost().getMax(), DELTA);
-		checkStorage(quote.getStorages().get(0));
-		return checkInstance(quote.getInstances().get(0), instanceCost);
+		checkStorage(quote.getStorages().getFirst());
+		return checkInstance(quote.getInstances().getFirst(), instanceCost);
 	}
 
 	private ProvQuoteInstance checkInstance(final ProvQuoteInstance instance, final double cost) {
@@ -406,12 +406,12 @@ class ProvOutscalePriceImportTest extends AbstractServerTest {
 		// ---------------------------------
 		var sLookup = qsResource
 				.lookup(subscription, QuoteStorageQuery.builder().size(5).instance(createInstance.getId()).build())
-				.get(0);
+				.getFirst();
 		Assertions.assertEquals("eu-west-2/bsu-standard", sLookup.getPrice().getCode());
 
 		// Lookup SSD
 		sLookup = qsResource.lookup(subscription, QuoteStorageQuery.builder().size(5)
-				.optimized(ProvStorageOptimized.IOPS).instance(createInstance.getId()).build()).get(0);
+				.optimized(ProvStorageOptimized.IOPS).instance(createInstance.getId()).build()).getFirst();
 		assertLookup("eu-west-2/bsu-gp2", sLookup, 0.55d);
 		Assertions.assertEquals("EUROPE", sLookup.getPrice().getLocation().getDescription());
 
@@ -429,7 +429,7 @@ class ProvOutscalePriceImportTest extends AbstractServerTest {
 		// Lookup snapshot
 		// ---------------------------------
 		sLookup = qsResource.lookup(subscription, QuoteStorageQuery.builder().size(5).latency(Rate.LOW)
-				.optimized(ProvStorageOptimized.DURABILITY).build()).get(0);
+				.optimized(ProvStorageOptimized.DURABILITY).build()).getFirst();
 		assertLookup("eu-west-2/osu-enterprise", sLookup, 0.125d);
 
 		em.flush();
