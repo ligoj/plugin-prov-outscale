@@ -178,12 +178,8 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 
 		// Support
 		nextStep(context, "install-support");
-		csvForBean.toBean(ProvSupportType.class, PREFIX + "/prov-support-type.csv").forEach(t -> {
-			installSupportType(context, t.getCode(), t);
-		});
-		csvForBean.toBean(ProvSupportPrice.class, PREFIX + "/prov-support-price.csv").forEach(t -> {
-			installSupportPrice(context, t.getCode(), t);
-		});
+		csvForBean.toBean(ProvSupportType.class, PREFIX + "/prov-support-type.csv").forEach(t -> installSupportType(context, t.getCode(), t));
+		csvForBean.toBean(ProvSupportPrice.class, PREFIX + "/prov-support-price.csv").forEach(t -> installSupportPrice(context, t.getCode(), t));
 	}
 
 	/**
@@ -317,7 +313,7 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 		});
 
 		return copyAsNeeded(context, type, t -> {
-			t.setName(code /* human readable name */);
+			t.setName(code /* human-readable name */);
 			t.setIncrement(null);
 			t.setAvailability(99d);
 			t.setMaximal(14901d);
@@ -488,7 +484,7 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 		final var typeParts = price.getCode().split("_");
 		final var last = typeParts[typeParts.length - 1];
 		final var service = price.getService().toLowerCase();
-		List.of(last, service + "-" + last, service + "-" + last.replace("std", "standard")).stream()
+		Stream.of(last, service + "-" + last, service + "-" + last.replace("std", "standard"))
 				.map(context.getStorageTypes()::get).filter(Objects::nonNull).findFirst()
 				.ifPresent(type -> installStoragePrice(context, region.getName(), type, costGb));
 	}

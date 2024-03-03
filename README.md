@@ -14,5 +14,5 @@ Provides the following features :
 - Prices are indirectly read from Outscale console.
 - Supported services : Compute, Storage and database
 
-# Susbcription parameters
+# Subscription parameters
 * (none for now)
