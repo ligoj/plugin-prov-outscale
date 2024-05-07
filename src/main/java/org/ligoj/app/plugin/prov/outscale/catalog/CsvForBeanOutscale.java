@@ -38,7 +38,7 @@ public class CsvForBeanOutscale extends AbstractCsvManager {
 	}
 
 	/**
-	 * Build the reader parsing the CSV file from AWS to build {@link AwsEc2Price} instances. Non AWS instances data are
+	 * Build the reader parsing the CSV file from AWS to build {@link CsvPrice} instances. Non AWS instances data are
 	 * skipped, and headers are ignored.
 	 *
 	 * @param reader The original AWS CSV input.

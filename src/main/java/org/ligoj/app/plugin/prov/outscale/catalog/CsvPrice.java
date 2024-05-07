@@ -61,7 +61,7 @@ public class CsvPrice extends DescribedBean<String> {
 	 * Regional prices.
 	 */
 	@Getter
-	private Map<String, Double> regions = new HashedMap<>();
+	private final Map<String, Double> regions = new HashedMap<>();
 
 	/**
 	 * Resolved OS. May be <code>null</code>.

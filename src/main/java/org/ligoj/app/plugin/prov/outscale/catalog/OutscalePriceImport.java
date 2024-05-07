@@ -151,9 +151,8 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 				.collect(Collectors.toMap(ProvInstancePrice::getCode, Function.identity())));
 		// Term definitions
 		final var terms = toMap("outscale/terms.json", MAP_TERMS);
-		terms.entrySet().forEach(e -> {
-			final var term = e.getValue();
-			term.setEntity(installPriceTerm(context, e.getKey(), term.getPeriod()));
+		terms.forEach((key, term) -> {
+			term.setEntity(installPriceTerm(context, key, term.getPeriod()));
 			term.getConverters().put(BillingPeriod.HOURLY, Math.max(1d, term.getPeriod()) * context.getHoursMonth());
 			if (term.getPeriod() >= 1) {
 				term.getConverters().put(BillingPeriod.MONTHLY, Math.max(1d, term.getPeriod()));
@@ -569,7 +568,7 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 	}
 
 	/**
-	 * Return the first price matching to the OS/Region requirement and having a closest billing period licensing.
+	 * Return the first price matching to the OS/Region requirement and having the closest billing period licensing.
 	 */
 	private CsvPrice getClosestBilling(final UpdateContext context, final Predicate<CsvPrice> filter, final VmOs os,
 			final ProvLocation region, final Term csvTerm) {
