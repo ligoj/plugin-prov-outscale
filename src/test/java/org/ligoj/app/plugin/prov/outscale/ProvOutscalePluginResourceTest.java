@@ -56,11 +56,8 @@ class ProvOutscalePluginResourceTest extends AbstractServerTest {
 	@BeforeEach
 	void prepareData() throws IOException {
 		persistSystemEntities();
-		persistEntities("csv",
-				new Class[] { Node.class, Project.class, CacheCompany.class, CacheUser.class, DelegateNode.class,
-						Subscription.class, ProvLocation.class, ProvQuote.class, Parameter.class,
-						ParameterValue.class },
-				StandardCharsets.UTF_8.name());
+		persistEntities("csv", new Class[] { Node.class, Project.class, CacheCompany.class, CacheUser.class, DelegateNode.class, Subscription.class,
+				ProvLocation.class, ProvQuote.class, Parameter.class, ParameterValue.class }, StandardCharsets.UTF_8);
 		configuration.put("service:prov:outscale:api", "http://localhost:" + MOCK_PORT + "/");
 		this.subscription = getSubscription("Jupiter");
 
