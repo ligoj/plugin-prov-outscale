@@ -96,13 +96,11 @@ class ProvOutscalePluginResourceTest extends AbstractServerTest {
 		initSpringSecurityContext("any");
 
 		// Re-Install a new configuration
-		Assertions.assertEquals("read-only-node", Assertions.assertThrows(BusinessException.class, () -> {
-			resource.updateCatalog("service:prov:outscale:test", false);
-		}).getMessage());
+		Assertions.assertEquals("read-only-node", Assertions.assertThrows(BusinessException.class, () -> resource.updateCatalog("service:prov:outscale:test", false)).getMessage());
 	}
 
 	@Test
-	void create() throws Exception {
+	void create() {
 		resource.create(subscription);
 	}
 
@@ -114,7 +112,7 @@ class ProvOutscalePluginResourceTest extends AbstractServerTest {
 	}
 
 	@Test
-	void checkStatus() throws Exception {
+	void checkStatus() {
 		Assertions.assertTrue(resource.checkStatus(subscriptionResource.getParametersNoCheck(subscription)));
 	}
 
