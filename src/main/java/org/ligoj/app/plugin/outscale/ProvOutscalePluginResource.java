@@ -1,7 +1,7 @@
 /*
  * Licensed under MIT (https://github.com/ligoj/ligoj/blob/master/LICENSE)
  */
-package org.ligoj.app.plugin.prov.outscale;
+package org.ligoj.app.plugin.outscale;
 
 import java.util.Map;
 
@@ -12,7 +12,7 @@ import jakarta.ws.rs.core.MediaType;
 import org.ligoj.app.plugin.prov.AbstractProvResource;
 import org.ligoj.app.plugin.prov.ProvResource;
 import org.ligoj.app.plugin.prov.catalog.ImportCatalogService;
-import org.ligoj.app.plugin.prov.outscale.catalog.OutscalePriceImport;
+import org.ligoj.app.plugin.outscale.catalog.OutscalePriceImport;
 import org.ligoj.bootstrap.resource.system.configuration.ConfigurationResource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

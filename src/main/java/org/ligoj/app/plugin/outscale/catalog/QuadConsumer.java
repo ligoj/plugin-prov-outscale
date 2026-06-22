@@ -1,7 +1,7 @@
 /*
  * Licensed under MIT (https://github.com/ligoj/ligoj/blob/master/LICENSE)
  */
-package org.ligoj.app.plugin.prov.outscale.catalog;
+package org.ligoj.app.plugin.outscale.catalog;
 
 /**
  * An operation that accepts four input arguments and returns no result.

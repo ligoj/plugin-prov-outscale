@@ -1,7 +1,7 @@
 /*
  * Licensed under MIT (https://github.com/ligoj/ligoj/blob/master/LICENSE)
  */
-package org.ligoj.app.plugin.prov.outscale.catalog;
+package org.ligoj.app.plugin.outscale.catalog;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -40,7 +40,7 @@ import org.ligoj.app.plugin.prov.model.ProvSupportType;
 import org.ligoj.app.plugin.prov.model.ProvTenancy;
 import org.ligoj.app.plugin.prov.model.Rate;
 import org.ligoj.app.plugin.prov.model.VmOs;
-import org.ligoj.app.plugin.prov.outscale.ProvOutscalePluginResource;
+import org.ligoj.app.plugin.outscale.ProvOutscalePluginResource;
 import org.ligoj.bootstrap.core.INamableBean;
 import org.springframework.stereotype.Component;
 
