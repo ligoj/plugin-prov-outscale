@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useI18nStore } from '@ligoj/host'
-import def from '../index.js'
+import def, { catalogConfiguration } from '../index.js'
 
 beforeEach(() => { setActivePinia(createPinia()) })
 
@@ -21,3 +21,19 @@ describe('plugin-prov-outscale contract', () => {
     expect(() => def.feature('renderFeatures')).toThrow(/no feature "renderFeatures"/)
   })
 })
+
+describe('catalogConfiguration', () => {
+  it('exports the provider scoped configuration properties', () => {
+    expect(Array.isArray(catalogConfiguration)).toBe(true)
+    expect(catalogConfiguration.length).toBeGreaterThan(0)
+    for (const property of catalogConfiguration) {
+      expect(property.name.startsWith('service:prov:outscale:')).toBe(true)
+      expect(['regExp', 'string']).toContain(property.type)
+      expect(property).toHaveProperty('default')
+      expect(property.key).toBeTruthy()
+    }
+    // Also reachable through the feature dispatcher used by plugin-prov
+    expect(def.feature('catalogConfiguration')).toBe(catalogConfiguration)
+  })
+})
+

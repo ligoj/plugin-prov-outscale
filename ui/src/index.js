@@ -10,7 +10,22 @@ import enMessages from './i18n/en.js'
 import frMessages from './i18n/fr.js'
 import service from './service.js'
 
-const features = {}
+/**
+ * Provider scoped configuration properties, rendered by the parent plugin-prov's catalog configuration dialog.
+ * `name` is the SystemConfiguration entry, `key` resolves the NLS label/tooltip (`catalog.config.<key>[Help]`).
+ */
+export const catalogConfiguration = [
+  {
+    name: 'service:prov:outscale:prices-url',
+    key: 'outscalePricesUrl',
+    type: 'string',
+    default: 'https://outscale.ligoj.io',
+  },
+]
+
+const features = {
+  catalogConfiguration: () => catalogConfiguration,
+}
 
 export default {
   id: 'prov-outscale',

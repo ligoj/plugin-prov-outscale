@@ -3,4 +3,6 @@
 // label the legacy nls bundle shipped is the VM `name`.
 export default {
   'service:prov:outscale:name': 'Name',
+  'catalog.config.outscalePricesUrl': 'Prices URL',
+  'catalog.config.outscalePricesUrlHelp': 'Base URL of the Outscale price catalog.',
 }
