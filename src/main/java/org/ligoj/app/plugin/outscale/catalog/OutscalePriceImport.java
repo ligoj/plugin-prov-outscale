@@ -26,6 +26,7 @@ import java.util.stream.Stream;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.EnumUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.ligoj.app.plugin.prov.catalog.AbstractImportCatalogResource;
 import org.ligoj.app.plugin.prov.model.ImportCatalogStatus;
 import org.ligoj.app.plugin.prov.model.ProvInstancePrice;
@@ -165,7 +166,7 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 
 		// Fetch the remote prices stream and build the price objects
 		nextStep(context, "retrieve-catalog");
-		buildModel(context, StringUtils.removeEnd(getPricesApi(), "/") + "/prices/outscale-prices.csv");
+		buildModel(context, Strings.CS.removeEnd(getPricesApi(), "/") + "/prices/outscale-prices.csv");
 
 		// Instances
 		nextStep(context, "install-instances");
@@ -333,10 +334,10 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 			return newPrice;
 		});
 
-		copyAsNeeded(context, price, p -> {
-			p.setLocation(installRegion(context, region));
-			p.setType(type);
-		});
+		if (isNeedUpdate(context, price)) {
+			price.setLocation(installRegion(context, region));
+			price.setType(type);
+		}
 
 		// Update the cost
 		saveAsNeeded(context, price, cost, spRepository);
@@ -602,17 +603,17 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 		});
 
 		// Save the price as needed
-		copyAsNeeded(context, price, p -> {
-			p.setLocation(region);
-			p.setOs(os);
-			p.setTerm(term);
-			p.setTenancy(tenancy);
-			p.setType(type);
-			p.setIncrementCpu(Objects.requireNonNullElse(csvpPrice.getIncrementCpu(), 1d));
-			p.setMinCpu((double) csvpPrice.getMinCpu());
-			p.setPeriod(term.getPeriod());
-			p.setSoftware(csvpPrice.getSoftware());
-		});
+		if (isNeedUpdate(context, price)) {
+			price.setLocation(region);
+			price.setOs(os);
+			price.setTerm(term);
+			price.setTenancy(tenancy);
+			price.setType(type);
+			price.setIncrementCpu(Objects.requireNonNullElse(csvpPrice.getIncrementCpu(), 1d));
+			price.setMinCpu((double) csvpPrice.getMinCpu());
+			price.setPeriod(term.getPeriod());
+			price.setSoftware(csvpPrice.getSoftware());
+		}
 
 		// Update the cost
 		saveAsNeeded(context, price, Objects.requireNonNullElse(price.getCostCpu(), 0d), cpuCost, (cR, c) -> {
@@ -730,12 +731,12 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 		});
 
 		// Merge the support type details
-		copyAsNeeded(context, price, p -> {
-			p.setLimit(aPrice.getLimit());
-			p.setMin(aPrice.getMin());
-			p.setRate(aPrice.getRate());
-			p.setType(aPrice.getType());
-		});
+		if (isNeedUpdate(context, price)) {
+			price.setLimit(aPrice.getLimit());
+			price.setMin(aPrice.getMin());
+			price.setRate(aPrice.getRate());
+			price.setType(aPrice.getType());
+		}
 
 		// Update the cost
 		saveAsNeeded(context, price, price.getCost(), aPrice.getCost(), (cR, c) -> price.setCost(cR),
