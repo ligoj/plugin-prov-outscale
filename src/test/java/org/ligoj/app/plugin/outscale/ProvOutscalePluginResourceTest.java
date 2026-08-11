@@ -3,11 +3,7 @@
  */
 package org.ligoj.app.plugin.outscale;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-
 import jakarta.transaction.Transactional;
-
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,23 +11,22 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.ligoj.app.AbstractServerTest;
 import org.ligoj.app.iam.model.CacheCompany;
 import org.ligoj.app.iam.model.CacheUser;
-import org.ligoj.app.model.DelegateNode;
-import org.ligoj.app.model.Node;
-import org.ligoj.app.model.Parameter;
-import org.ligoj.app.model.ParameterValue;
-import org.ligoj.app.model.Project;
-import org.ligoj.app.model.Subscription;
+import org.ligoj.app.model.*;
+import org.ligoj.app.plugin.outscale.catalog.OutscalePriceImport;
 import org.ligoj.app.plugin.prov.model.ProvLocation;
 import org.ligoj.app.plugin.prov.model.ProvQuote;
-import org.ligoj.app.plugin.outscale.catalog.OutscalePriceImport;
 import org.ligoj.app.resource.subscription.SubscriptionResource;
 import org.ligoj.bootstrap.core.resource.BusinessException;
 import org.ligoj.bootstrap.resource.system.configuration.ConfigurationResource;
-import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.annotation.Rollback;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+
+import static org.mockito.Mockito.mock;
 
 /**
  * Test class of {@link ProvOutscalePluginResource}
@@ -78,7 +73,7 @@ class ProvOutscalePluginResourceTest extends AbstractServerTest {
 	@Test
 	void install() throws Exception {
 		final var resource2 = new ProvOutscalePluginResource();
-		resource2.priceImport = Mockito.mock(OutscalePriceImport.class);
+		resource2.priceImport = mock(OutscalePriceImport.class);
 		resource2.install();
 	}
 
@@ -87,7 +82,7 @@ class ProvOutscalePluginResourceTest extends AbstractServerTest {
 		// Re-Install a new configuration
 		final var resource2 = new ProvOutscalePluginResource();
 		super.applicationContext.getAutowireCapableBeanFactory().autowireBean(resource2);
-		resource2.priceImport = Mockito.mock(OutscalePriceImport.class);
+		resource2.priceImport = mock(OutscalePriceImport.class);
 		resource2.updateCatalog("service:prov:outscale:test", false);
 	}
 
