@@ -3,52 +3,30 @@
  */
 package org.ligoj.app.plugin.outscale.catalog;
 
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.EnumUtils;
+import org.apache.commons.lang3.Strings;
+import org.ligoj.app.plugin.outscale.ProvOutscalePluginResource;
+import org.ligoj.app.plugin.prov.catalog.AbstractImportCatalogResource;
+import org.ligoj.app.plugin.prov.model.*;
+import org.ligoj.bootstrap.core.INamableBean;
+import org.springframework.stereotype.Component;
+import tools.jackson.core.type.TypeReference;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import org.apache.commons.lang3.ArrayUtils;
-import org.apache.commons.lang3.EnumUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.Strings;
-import org.ligoj.app.plugin.prov.catalog.AbstractImportCatalogResource;
-import org.ligoj.app.plugin.prov.model.ImportCatalogStatus;
-import org.ligoj.app.plugin.prov.model.ProvInstancePrice;
-import org.ligoj.app.plugin.prov.model.ProvInstancePriceTerm;
-import org.ligoj.app.plugin.prov.model.ProvInstanceType;
-import org.ligoj.app.plugin.prov.model.ProvLocation;
-import org.ligoj.app.plugin.prov.model.ProvStorageOptimized;
-import org.ligoj.app.plugin.prov.model.ProvStoragePrice;
-import org.ligoj.app.plugin.prov.model.ProvStorageType;
-import org.ligoj.app.plugin.prov.model.ProvSupportPrice;
-import org.ligoj.app.plugin.prov.model.ProvSupportType;
-import org.ligoj.app.plugin.prov.model.ProvTenancy;
-import org.ligoj.app.plugin.prov.model.Rate;
-import org.ligoj.app.plugin.prov.model.VmOs;
-import org.ligoj.app.plugin.outscale.ProvOutscalePluginResource;
-import org.ligoj.bootstrap.core.INamableBean;
-import org.springframework.stereotype.Component;
-
-import com.fasterxml.jackson.core.type.TypeReference;
-
-import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
 
 /**
  * The provisioning price service for Digital Ocean. Manage install or update of prices.<br>
@@ -377,8 +355,8 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 				addRegionalPrice(csv, "cn-southeast-1", csv.getRegionCNSE1());
 
 				// Add to the prices map
-				prices.computeIfAbsent(csv.getService(), k -> new HashMap<>())
-						.computeIfAbsent(csv.getType(), k -> new ArrayList<>()).add(csv);
+				prices.computeIfAbsent(csv.getService(), _ -> new HashMap<>())
+						.computeIfAbsent(csv.getType(), _ -> new ArrayList<>()).add(csv);
 
 				// Read the next one
 				csv = csvReader.read();
@@ -616,7 +594,7 @@ public class OutscalePriceImport extends AbstractImportCatalogResource {
 		}
 
 		// Update the cost
-		saveAsNeeded(context, price, Objects.requireNonNullElse(price.getCostCpu(), 0d), cpuCost, (cR, c) -> {
+		saveAsNeeded(context, price, Objects.requireNonNullElse(price.getCostCpu(), 0d), cpuCost, (cR, _) -> {
 			price.setCostCpu(cR);
 			price.setCostRam(round3Decimals(ramCost));
 			price.setCost(round3Decimals(monthlyCost));
